@@ -1,5 +1,6 @@
+# can also be downloaded from https://www.kaggle.com/datasets/grosvenpaul/family-income-and-expenditure
 
-data <- read.csv("Income_dataset.csv")
+data <- read.csv("Family Income and Expenditure.csv")
 
 data=data[data$Total.Household.Income>quantile(data$Total.Household.Income, 0.1), ] #above poverty line
 data=data[data$Total.Number.of.Family.members == 1, ] #family of size one
