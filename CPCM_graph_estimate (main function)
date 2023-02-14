@@ -24,7 +24,7 @@ library(ExtremeRisks)
 library(EnvStats)
 
 ##################################   Example   ###########################################
-#set.seed(0)
+#set.seed(42)
 #n=500
 #X1 = rnorm(n)
 #X2=c();
@@ -32,10 +32,10 @@ library(EnvStats)
 #  X2 = c(X2, rnorm(1, X1[i], X1[i]^2+1))
 #}
 #X= data.frame(X1, X2)
-#CPCM_graph_estimate(X, family = c("Gaussian", "Gaussian")) #First "Gaussian" is for direction 2-->1 , Second for direction 1-->2   
+#CPCM_graph_estimate(X, family = c("Gaussian", "Gaussian"), force_estimate=FALSE) #First "Gaussian" is for direction 2-->1 , Second for direction 1-->2
 #>                       Causal results (p-values)
-#> p-value 1-->2                 0.940500183598911
-#> p-value 2-->1                0.0212612888665124
+#> p-value 1-->2                 0.739182842730139
+#> p-value 2-->1                0.0193744782880139
 #> Causal graph estimate                   1 --> 2
 
 
