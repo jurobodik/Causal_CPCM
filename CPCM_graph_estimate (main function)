@@ -1,3 +1,10 @@
+#This is the code for the main function that estimates the causal graph via CPCM, called CPCM_graph_estimate(X, family). 
+#An important step is to estimate epsilon by assuming family F. 
+#Choices for F are: "Gaussian", "Gaussian with fixed sigma", "Pareto", "Gamma", "Gamma  with fixed scale", "Gumbel", "Gumbel with fixed scale"
+#We always used gam function from MGCV package for the smooth parameter estimation. 
+#If you want different family than already coded or different method than implemented, it is easy! For that,
+#simply add into function "estimate_epsilon(Y, X, family="YOUR FAMILY")" a code how you want to estimate your epsilons
+
 library(copula)
 library(boot)
 library(MASS)
@@ -41,15 +48,16 @@ CPCM_graph_estimate <- function(X, family = c("Gaussian", "Gaussian" ,"Gaussian"
   if(length(family)==1){family = rep(family, ncol(X))}
   ##################Just some functions. Note especially estimate_epsilon function, that specifies how we estimate theta under different F
   estimate_epsilon<-function(Y, X, family="Gaussian"){ 
-    
+       
     ### ### ### ### ### ### ### ###
-    rename_columns_to_1_to_q <-function(X){ 
+    rename_columns_to_1_to_q <-function(X){ #Just making sure that our variables are called X1, X2, ...
       if (is.null(nrow(X))) {X = as.data.frame(X); names(X)[1] <- "X1"; return(X) }
       return(X %>% rename_with(~ str_c("X", seq_along(.))))
     }
-    
+     X = rename_columns_to_1_to_q(X)
+     names(Y)<- "Y"
     ### ### ### ### ### ### ### ###
-    formula <- function(X, withY=TRUE){ #Definition of formula. We want to distinguish between discrete and continous variables for GAM
+    formula <- function(X, withY=TRUE){ #Definition of formula. We want to distinguish between discrete and continous variables for GAM. But anyway this function basically returns "Y~s(X1) + s(X2)+...+s(Xq)"
       q = ncol(X); if (is.null(nrow(X))) {q=1} 
       if(withY==TRUE){ form="Y ~ "}
       if(withY==FALSE){form=" ~ "}
@@ -63,15 +71,14 @@ CPCM_graph_estimate <- function(X, family = c("Gaussian", "Gaussian" ,"Gaussian"
       form=as.formula(  substr(form,1,nchar(form)-1)  )
       return(form)
     }
-    
-    X = rename_columns_to_1_to_q(X)
-    names(Y)<- "Y"
+   ### ### ### ### ### ### ### ### Here we start with the estimation of epsilons for each family separately.### ### ### ### ### ### ### ###
+ 
     
     if (family=="Gaussian") {
       
       fit=  gam(list(formula(X, TRUE),formula(X, FALSE)), data.frame(Y,X) ,family=gaulss(), link=list("identity","logb"))
       
-      give_me_generalized_residuals_from_gaulss <-function(Y, fit){
+      give_me_generalized_residuals_from_gaulss <-function(Y, fit){ #Note that GAM with GAULSS family does not estimate mu and sigma but mu and 1/sigma. 
         residuals=c()
         for (i in 1:length(Y)) {
           residuals=c(residuals,  (Y[i] -fit$fitted.values[i,1])*(fit$fitted.values[i,2]) ) #fit$fitted.values[i,2]=1/sigma[i], fit$fitted.values[i,1]=mu[i]
@@ -183,56 +190,7 @@ CPCM_graph_estimate <- function(X, family = c("Gaussian", "Gaussian" ,"Gaussian"
       return(residual)
       
     }
-    
-    if (family=="GEV") {
-      
-      fit=  gam(list(formula(X, TRUE),formula(X, FALSE), formula(X, FALSE)), data.frame(Y,X) ,family=gevlss())
-      
-      give_me_generalized_residuals_from_gevlss <-function(Y, fit){
-        residuals=c()
-        for (i in 1:length(Y)) {
-          residuals=c(residuals,   pgevd(Y[i], location = fitted(fit)[i,1], scale = exp(fitted(fit)[i,2]), shape = fitted(fit)[i,3]))
-        }
-        return(residuals)
-      }
-      
-      residual = give_me_generalized_residuals_from_gevlss(Y, fit)
-      
-      return(residual)
-      
-    }
-    
-    if (family=="GEV with fixed mu") {
-      
-      fit=  gam(list(Y~1,formula(X, FALSE), formula(X, FALSE)), data.frame(Y,X) ,family=gevlss())
-      
-      give_me_generalized_residuals_from_gevlss <-function(Y, fit){
-        residuals=c()
-        for (i in 1:length(Y)) {
-          residuals=c(residuals,   pgevd(Y[i], location = fitted(fit)[i,1], scale = exp(fitted(fit)[i,2]), shape = fitted(fit)[i,3]))
-        }
-        return(residuals)
-      }
-      
-      residual = give_me_generalized_residuals_from_gevlss(Y, fit)
-      
-      return(residual)
-      
-    }
-    
-    
-    if (family=="GEV with fixed shape") {
-      
-      fit=  gam(list(formula(X, TRUE),formula(X, FALSE), ~1), data.frame(Y,X) ,family=gevlss())
-      
-      give_me_generalized_residuals_from_gevlss <-function(Y, fit){
-        residuals=c()
-        for (i in 1:length(Y)) {
-          residuals=c(residuals,   pgevd(Y[i], location = fitted(fit)[i,1], scale = exp(fitted(fit)[i,2]), shape = fitted(fit)[i,3]))
-        }
-        return(residuals)
-      }
-      
+        
       residual = give_me_generalized_residuals_from_gevlss(Y, fit)
       
       return(residual)
@@ -297,15 +255,19 @@ CPCM_graph_estimate <- function(X, family = c("Gaussian", "Gaussian" ,"Gaussian"
   }
   
   ##################We coded it only for d=2 and d=3 using ugly brute-force
-  if (ncol(X)==2) {
+ #BIVARIATE CASE
+  if (ncol(X)==2) { 
     X1 = X[,1]; X2 = X[,2]
     
     if (force_estimate == FALSE){
       if (length(X1)>500) { indep = hoeffding.D.test(X1, X2, na.rm = TRUE, collisions = FALSE, precision = 1e-05) }
       else { indep=dhsic.test(data.frame(X1, X2))}
       
-      if(indep$p.value>=0.05) {res = "Independence"}}
-    if(length(res !="Independence")==0 )  {
+      if(indep$p.value>=0.05) {res =  as.data.frame(c("-", "-", "Independence"));     colnames(res)<-c("Causal results (p-values)");    rownames(res)<-c("p-value 1-->2", "p-value 2-->1", "Causal graph estimate")
+                               return(res)   }
+      }
+    
+
       
       
       Y= X2; X = data.frame(X1=  X1);fam = family[2]
@@ -325,13 +287,14 @@ CPCM_graph_estimate <- function(X, family = c("Gaussian", "Gaussian" ,"Gaussian"
         if (z1<0.05 & z2<0.05) res = "Unplausible"
       }
       
-    }
+    
     res=as.data.frame(c(z1, z2, res))
     colnames(res)<-c("Causal results (p-values)")
     rownames(res)<-c("p-value 1-->2", "p-value 2-->1", "Causal graph estimate")
     return(res)
   }
   
+  #TRIVARIATE CASE
   if (ncol(X)==3) {
     X1 = X[,1]; X2 = X[,2]; X3 = X[,3]
     r123=estimate_epsilon(Y= X1, X=data.frame(X1=  X2  , X2=  X3  ), family = family[1])
