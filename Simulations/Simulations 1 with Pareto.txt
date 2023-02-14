@@ -184,3 +184,28 @@ legend(
   box.lty = 0, 
   title="Final estiamtion"
 )
+
+
+
+
+######## Here is just a code to do the same with Gaussian unidentifiable cases, i.e. Theorem 1 (results not included in the paper)
+a=1;c=1;d=1;e=1;alpha=1;beta=1
+generate_from_unidentifiable_gaussian_case <- function(n,a=1,c=1,d=1,e=1,alpha=1,beta=1){ #Theorem 1 unidentifiable case
+  sigma<-function(x) 1/(sqrt(a*x^2 + c))
+  mu<-function(x)  (d+e*x)*(sigma(x)^2)
+  p_e<- function(x) {if(x<=-5){return(-1e9)}
+    return( sigma(x)*exp(  -0.5*(  (x-alpha)^2/(beta)^2 - mu(x)^2/(sigma(x)^2)  )   ) )}
+  
+  effect=c(); cause=c()
+  
+  M=3
+  while (length(cause)<n) {
+    u=runif(1,-5,5)
+    y=p_e(u)/M
+    if(sample(c(0,1), prob=c(y, 1-y), size=1)==0)(cause=c(cause, u)  )
+  }
+  for (i in 1:n) {
+    effect = c(effect, mu(cause[i]) + sigma(cause[i])*rnorm(1)    )
+  }
+  
+  return(cbind(cause, effect))  }
