@@ -1,5 +1,6 @@
-set.seed(42)
+set.seed(1)
 #####################Simulations 1 main idea################################
+#####################The graph from the paper is generated via the code starting at line ???
 alpha = 0
 n=300
 
@@ -90,6 +91,7 @@ for (alpha in c(-2, 0, 2)) {
     X = generate_our_data(n=300, alpha)
     graph = CPCM_graph_estimate(X, family = "Pareto")
     result = c(result, Encode_output_of_causal_estimation_to_numbers(graph[3,]))
+    cat("Time remaining:", number_of_repetitions-i, "\n")
   }
   
   final_result = rbind(final_result, result)
@@ -182,9 +184,3 @@ legend(
   box.lty = 0, 
   title="Final estiamtion"
 )
-
-
-
-
-
-
