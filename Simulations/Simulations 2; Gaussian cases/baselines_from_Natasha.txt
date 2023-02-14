@@ -1,5 +1,7 @@
 #Code taken from Natasa Tagasovska et al, https://github.com/tagas/bQCD.git
 #This file contains implementations of other causal discovery methods 
+#If you want to run these lines, download the zip from https://github.com/tagas/bQCD.git and set directory to it. 
+
 
 ###################################################################################
 # causal inference methods
