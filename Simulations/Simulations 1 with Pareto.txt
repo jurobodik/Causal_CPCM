@@ -1,6 +1,6 @@
 set.seed(1)
 #####################Simulations 1 main idea################################
-#####################The graph from the paper is generated via the code starting at line ???
+#####################The graph from the paper is generated via the code starting at line 44
 alpha = 0
 n=300
 
@@ -41,7 +41,7 @@ CPCM_graph_estimate(data.frame(Z1, Z2), family = "Pareto", force_estimate=FALSE)
 
 
 
-#####################The same but repeating many times################################
+#####################The same as "main idea" but repeating 50 times################################
 generate_our_data <- function(n=1000, alpha){
   
   m=100000
