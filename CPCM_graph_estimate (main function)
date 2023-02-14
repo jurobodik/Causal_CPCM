@@ -1,9 +1,9 @@
 #This is the code for the main function that estimates the causal graph via CPCM, called CPCM_graph_estimate(X, family). 
-#An important step is to estimate epsilon by assuming family F. 
+#An important step is to estimate epsilons (step one of the algorithm). For that, we assume a model with family F = distribution with q parameters
 #Choices for F are: "Gaussian", "Gaussian with fixed sigma", "Pareto", "Gamma", "Gamma  with fixed scale", "Gumbel", "Gumbel with fixed scale"
-#We always used gam function from MGCV package for the smooth parameter estimation. 
+#We always used "gam" function from "MGCV" package for the smooth parameter estimation. 
 #If you want different family than already coded or different method than implemented, it is easy! For that,
-#simply add into function "estimate_epsilon(Y, X, family="YOUR FAMILY")" a code how you want to estimate your epsilons
+#simply add into function "estimate_epsilon(Y, X, family="YOUR DISTRIBUTION FUNCTION")" a code how you want to estimate your epsilons
 
 library(copula)
 library(boot)
@@ -32,7 +32,7 @@ library(EnvStats)
 #  X2 = c(X2, rnorm(1, X1[i], X1[i]^2+1))
 #}
 #X= data.frame(X1, X2)
-#CPCM_graph_estimate(X, family = c("Gaussian", "Gaussian"))
+#CPCM_graph_estimate(X, family = c("Gaussian", "Gaussian")) #First "Gaussian" is for direction 2-->1 , Second for direction 1-->2   
 #>                       Causal results (p-values)
 #> p-value 1-->2                 0.940500183598911
 #> p-value 2-->1                0.0212612888665124
@@ -42,7 +42,7 @@ library(EnvStats)
 ############################ CPCM estimation of the causal graph ##########################
 
 
-CPCM_graph_estimate <- function(X, family = c("Gaussian", "Gaussian" ,"Gaussian"), force_estimate = FALSE, showing_computing_time=TRUE, accuracy = 0.0025){
+CPCM_graph_estimate <- function(X, family, force_estimate = FALSE, showing_computing_time=TRUE, accuracy = 0.0025){
   lambda = 2 #penalty for more edges, does not apply for bivariate case
   n = length(X[,1])
   if(length(family)==1){family = rep(family, ncol(X))}
