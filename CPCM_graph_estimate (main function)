@@ -43,8 +43,8 @@ library(EnvStats)
 
 
 CPCM_graph_estimate <- function(X, family = c("Gaussian", "Gaussian" ,"Gaussian"), force_estimate = FALSE, showing_computing_time=TRUE, accuracy = 0.0025){
-  lambda = 2
-  res=c(); n = length(X[,1])
+  lambda = 2 #penalty for more edges, does not apply for bivariate case
+  n = length(X[,1])
   if(length(family)==1){family = rep(family, ncol(X))}
   ##################Just some functions. Note especially estimate_epsilon function, that specifies how we estimate theta under different F
   estimate_epsilon<-function(Y, X, family="Gaussian"){ 
@@ -253,7 +253,7 @@ CPCM_graph_estimate <- function(X, family = c("Gaussian", "Gaussian" ,"Gaussian"
     
     
   }
-  
+  res=c(); #res = final result
   ##################We coded it only for d=2 and d=3 using ugly brute-force
  #BIVARIATE CASE
   if (ncol(X)==2) { 
