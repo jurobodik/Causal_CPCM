@@ -17,15 +17,16 @@ hist(X1[X1<400000])
 hist(X2)
 hist(X3)
 
-CPCM_graph_estimate(data.frame(X1, X2)   , family = "Gamma")
+CPCM_graph_estimate(data.frame(X1, X2), family = "Gamma")
 CPCM_graph_estimate(data.frame(X1, X3), family = "Gamma")
 CPCM_graph_estimate(data.frame(X1, X3), family = c("Pareto","Gamma")) #Just an example to compare with different F
-CPCM_graph_estimate(data.frame(X2, X3),  family = "Gamma")
+CPCM_graph_estimate(data.frame(X2, X3), family = "Gamma")
 
 
 #joint estimate of the graph. This takes a while (10 minutes?) since we only implemented brute force algorithm that goes through all DAGs. Also, independence test between d>2 variables is very slow
 #result is the incidence matrix (X_i --> X_j if position (i,j) is equal to 1)
-CPCM_graph_estimate( X , family = c("Gamma", "Gamma","Gamma"))
+set.seed(1) #p-values are computed using bootstrap with (1/accuracy) repetitions. The accuracy represent how precisely the p-values are computed. Lower number, slower computations. 
+CPCM_graph_estimate( X , family = c("Gamma", "Gamma","Gamma"), accuracy = 0.001) 
 
 
 
