@@ -48,14 +48,14 @@ CPCM_graph_estimate <- function(X, family, force_estimate = FALSE, showing_compu
   if(length(family)==1){family = rep(family, ncol(X))}
   ##################Just some functions. Note especially estimate_epsilon function, that specifies how we estimate theta under different F
   estimate_epsilon<-function(Y, X, family="Gaussian"){ 
-       
+    
     ### ### ### ### ### ### ### ###
     rename_columns_to_1_to_q <-function(X){ #Just making sure that our variables are called X1, X2, ...
       if (is.null(nrow(X))) {X = as.data.frame(X); names(X)[1] <- "X1"; return(X) }
       return(X %>% rename_with(~ str_c("X", seq_along(.))))
     }
-     X = rename_columns_to_1_to_q(X)
-     names(Y)<- "Y"
+    X = rename_columns_to_1_to_q(X)
+    names(Y)<- "Y"
     ### ### ### ### ### ### ### ###
     formula <- function(X, withY=TRUE){ #Definition of formula. We want to distinguish between discrete and continous variables for GAM. But anyway this function basically returns "Y~s(X1) + s(X2)+...+s(Xq)"
       q = ncol(X); if (is.null(nrow(X))) {q=1} 
@@ -71,8 +71,8 @@ CPCM_graph_estimate <- function(X, family, force_estimate = FALSE, showing_compu
       form=as.formula(  substr(form,1,nchar(form)-1)  )
       return(form)
     }
-   ### ### ### ### ### ### ### ### Here we start with the estimation of epsilons for each family separately.### ### ### ### ### ### ### ###
- 
+    ### ### ### ### ### ### ### ### Here we start with the estimation of epsilons for each family separately.### ### ### ### ### ### ### ###
+    
     
     if (family=="Gaussian") {
       
@@ -168,7 +168,7 @@ CPCM_graph_estimate <- function(X, family, force_estimate = FALSE, showing_compu
         return(residuals)
       }
       
-        return(give_me_generalized_residuals_from_gammals(Y, fit))
+      return(give_me_generalized_residuals_from_gammals(Y, fit))
       
     }
     
@@ -190,160 +190,158 @@ CPCM_graph_estimate <- function(X, family, force_estimate = FALSE, showing_compu
       return(residual)
       
     }
-        
-      residual = give_me_generalized_residuals_from_gevlss(Y, fit)
-      
-      return(residual)
-      
-    }
+    
+   
+    
+    return(  "Family not implemented, sorry.")
     
   }
-  make_all_dags_on_three_nodes <-function(){#I am sorry about this monstrosity. Thanks chatGPT for generating it
-    all_dags = list()
-    all_dags[[length(all_dags)+1]] = matrix(c(0,0,0,   0,0,0,    0,0,0), nrow = 3, ncol = 3, byrow = TRUE)
-    all_dags[[length(all_dags)+1]] = matrix(c(0,1,0,   0,0,0,    0,0,0), nrow = 3, ncol = 3, byrow = TRUE)
-    all_dags[[length(all_dags)+1]] = matrix(c(0,1,0,   0,0,1,    0,0,0), nrow = 3, ncol = 3, byrow = TRUE)
-    all_dags[[length(all_dags)+1]] = matrix(c(0,1,0,   0,0,0,    0,1,0), nrow = 3, ncol = 3, byrow = TRUE)
-    all_dags[[length(all_dags)+1]] = matrix(c(0,1,0,   0,0,0,    1,0,0), nrow = 3, ncol = 3, byrow = TRUE)
-    all_dags[[length(all_dags)+1]] = matrix(c(0,1,0,   0,0,0,    1,1,0), nrow = 3, ncol = 3, byrow = TRUE)
-    all_dags[[length(all_dags)+1]] = matrix(c(0,1,1,   0,0,0,    0,0,0), nrow = 3, ncol = 3, byrow = TRUE)
-    all_dags[[length(all_dags)+1]] = matrix(c(0,1,1,   0,0,1,    0,0,0), nrow = 3, ncol = 3, byrow = TRUE)
-    all_dags[[length(all_dags)+1]] = matrix(c(0,1,1,   0,0,0,    0,1,0), nrow = 3, ncol = 3, byrow = TRUE)
-    all_dags[[length(all_dags)+1]] = matrix(c(0,0,1,   0,0,1,    0,0,0), nrow = 3, ncol = 3, byrow = TRUE)
-    
-    all_dags[[length(all_dags)+1]] = matrix(c(0,0,1,   0,0,0,    0,1,0), nrow = 3, ncol = 3, byrow = TRUE)
-    all_dags[[length(all_dags)+1]] = matrix(c(0,0,1,   1,0,0,    0,0,0), nrow = 3, ncol = 3, byrow = TRUE)
-    all_dags[[length(all_dags)+1]] = matrix(c(0,0,1,   1,0,1,    0,0,0), nrow = 3, ncol = 3, byrow = TRUE)
-    all_dags[[length(all_dags)+1]] = matrix(c(0,0,1,   0,0,0,    0,0,0), nrow = 3, ncol = 3, byrow = TRUE)
-    all_dags[[length(all_dags)+1]] = matrix(c(0,0,0,   1,0,0,    0,0,0), nrow = 3, ncol = 3, byrow = TRUE)
-    all_dags[[length(all_dags)+1]] = matrix(c(0,0,0,   0,0,1,    0,0,0), nrow = 3, ncol = 3, byrow = TRUE)
-    all_dags[[length(all_dags)+1]] = matrix(c(0,0,0,   0,0,0,    1,0,0), nrow = 3, ncol = 3, byrow = TRUE)
-    all_dags[[length(all_dags)+1]] = matrix(c(0,0,0,   0,0,0,    0,1,0), nrow = 3, ncol = 3, byrow = TRUE)
-    all_dags[[length(all_dags)+1]] = matrix(c(0,0,0,   1,0,0,    0,1,0), nrow = 3, ncol = 3, byrow = TRUE)
-    all_dags[[length(all_dags)+1]] = matrix(c(0,0,0,   1,0,0,    1,0,0), nrow = 3, ncol = 3, byrow = TRUE)
-    
-    all_dags[[length(all_dags)+1]] = matrix(c(0,0,0,   1,0,0,    1,1,0), nrow = 3, ncol = 3, byrow = TRUE)
-    all_dags[[length(all_dags)+1]] = matrix(c(0,0,0,   1,0,1,    0,1,0), nrow = 3, ncol = 3, byrow = TRUE)
-    all_dags[[length(all_dags)+1]] = matrix(c(0,0,0,   0,0,0,    1,1,0), nrow = 3, ncol = 3, byrow = TRUE)
-    all_dags[[length(all_dags)+1]] = matrix(c(0,0,0,   1,0,1,    1,0,0), nrow = 3, ncol = 3, byrow = TRUE)
-    all_dags[[length(all_dags)+1]] = matrix(c(0,0,0,   1,0,1,    0,0,0), nrow = 3, ncol = 3, byrow = TRUE)
-    
-    return(all_dags)}
-  all_dags = make_all_dags_on_three_nodes()
   
-  from_matrix_to_values<-function(variable, dag){
-    if (variable ==1) {
-      if (all(dag[,variable]==c(0,0,0))) {return(1)}
-      else if (all(dag[,variable]==c(0,1,0))) {return(2)}
-      else if (all(dag[,variable]==c(0,0,1))) {return(3)}
-      else if (all(dag[,variable]==c(0,1,1))) {return(4)}
-    }
-    if (variable ==2) {
-      if (all(dag[,variable]==c(0,0,0))) {return(1)}
-      else if (all(dag[,variable]==c(1,0,0))) {return(2)}
-      else if (all(dag[,variable]==c(0,0,1))) {return(3)}
-      else if (all(dag[,variable]==c(1,0,1))) {return(4)}
-    }  
-    if (variable ==3) {
-      if (all(dag[,variable]==c(0,0,0))) {return(1)}
-      else if (all(dag[,variable]==c(1,0,0))) {return(2)}
-      else if (all(dag[,variable]==c(0,1,0))) {return(3)}
-      else if (all(dag[,variable]==c(1,1,0))) {return(4)}
-    }  
-    
-    
-  }
-  res=c(); #res = final result
-  ##################We coded it only for d=2 and d=3 using ugly brute-force
- #BIVARIATE CASE
-  if (ncol(X)==2) { 
-    X1 = X[,1]; X2 = X[,2]
-    
-    if (force_estimate == FALSE){
-      if (length(X1)>500) { indep = hoeffding.D.test(X1, X2, na.rm = TRUE, collisions = FALSE, precision = 1e-05) }
-      else { indep=dhsic.test(data.frame(X1, X2))}
-      
-      if(indep$p.value>=0.05) {res =  as.data.frame(c("-", "-", "Independence"));     colnames(res)<-c("Causal results (p-values)");    rownames(res)<-c("p-value 1-->2", "p-value 2-->1", "Causal graph estimate")
-                               return(res)   }
-      }
-    
+make_all_dags_on_three_nodes <-function(){#I am sorry about this monstrosity. Thanks chatGPT for generating it
+  all_dags = list()
+  all_dags[[length(all_dags)+1]] = matrix(c(0,0,0,   0,0,0,    0,0,0), nrow = 3, ncol = 3, byrow = TRUE)
+  all_dags[[length(all_dags)+1]] = matrix(c(0,1,0,   0,0,0,    0,0,0), nrow = 3, ncol = 3, byrow = TRUE)
+  all_dags[[length(all_dags)+1]] = matrix(c(0,1,0,   0,0,1,    0,0,0), nrow = 3, ncol = 3, byrow = TRUE)
+  all_dags[[length(all_dags)+1]] = matrix(c(0,1,0,   0,0,0,    0,1,0), nrow = 3, ncol = 3, byrow = TRUE)
+  all_dags[[length(all_dags)+1]] = matrix(c(0,1,0,   0,0,0,    1,0,0), nrow = 3, ncol = 3, byrow = TRUE)
+  all_dags[[length(all_dags)+1]] = matrix(c(0,1,0,   0,0,0,    1,1,0), nrow = 3, ncol = 3, byrow = TRUE)
+  all_dags[[length(all_dags)+1]] = matrix(c(0,1,1,   0,0,0,    0,0,0), nrow = 3, ncol = 3, byrow = TRUE)
+  all_dags[[length(all_dags)+1]] = matrix(c(0,1,1,   0,0,1,    0,0,0), nrow = 3, ncol = 3, byrow = TRUE)
+  all_dags[[length(all_dags)+1]] = matrix(c(0,1,1,   0,0,0,    0,1,0), nrow = 3, ncol = 3, byrow = TRUE)
+  all_dags[[length(all_dags)+1]] = matrix(c(0,0,1,   0,0,1,    0,0,0), nrow = 3, ncol = 3, byrow = TRUE)
+  
+  all_dags[[length(all_dags)+1]] = matrix(c(0,0,1,   0,0,0,    0,1,0), nrow = 3, ncol = 3, byrow = TRUE)
+  all_dags[[length(all_dags)+1]] = matrix(c(0,0,1,   1,0,0,    0,0,0), nrow = 3, ncol = 3, byrow = TRUE)
+  all_dags[[length(all_dags)+1]] = matrix(c(0,0,1,   1,0,1,    0,0,0), nrow = 3, ncol = 3, byrow = TRUE)
+  all_dags[[length(all_dags)+1]] = matrix(c(0,0,1,   0,0,0,    0,0,0), nrow = 3, ncol = 3, byrow = TRUE)
+  all_dags[[length(all_dags)+1]] = matrix(c(0,0,0,   1,0,0,    0,0,0), nrow = 3, ncol = 3, byrow = TRUE)
+  all_dags[[length(all_dags)+1]] = matrix(c(0,0,0,   0,0,1,    0,0,0), nrow = 3, ncol = 3, byrow = TRUE)
+  all_dags[[length(all_dags)+1]] = matrix(c(0,0,0,   0,0,0,    1,0,0), nrow = 3, ncol = 3, byrow = TRUE)
+  all_dags[[length(all_dags)+1]] = matrix(c(0,0,0,   0,0,0,    0,1,0), nrow = 3, ncol = 3, byrow = TRUE)
+  all_dags[[length(all_dags)+1]] = matrix(c(0,0,0,   1,0,0,    0,1,0), nrow = 3, ncol = 3, byrow = TRUE)
+  all_dags[[length(all_dags)+1]] = matrix(c(0,0,0,   1,0,0,    1,0,0), nrow = 3, ncol = 3, byrow = TRUE)
+  
+  all_dags[[length(all_dags)+1]] = matrix(c(0,0,0,   1,0,0,    1,1,0), nrow = 3, ncol = 3, byrow = TRUE)
+  all_dags[[length(all_dags)+1]] = matrix(c(0,0,0,   1,0,1,    0,1,0), nrow = 3, ncol = 3, byrow = TRUE)
+  all_dags[[length(all_dags)+1]] = matrix(c(0,0,0,   0,0,0,    1,1,0), nrow = 3, ncol = 3, byrow = TRUE)
+  all_dags[[length(all_dags)+1]] = matrix(c(0,0,0,   1,0,1,    1,0,0), nrow = 3, ncol = 3, byrow = TRUE)
+  all_dags[[length(all_dags)+1]] = matrix(c(0,0,0,   1,0,1,    0,0,0), nrow = 3, ncol = 3, byrow = TRUE)
+  
+  return(all_dags)}
+all_dags = make_all_dags_on_three_nodes()
 
-      
-      
-      Y= X2; X = data.frame(X1=  X1);fam = family[2]
-      r2= estimate_epsilon(Y, X, fam)
-      Y= X1; X = data.frame(X1=  X2);fam = family[1]
-      r1= estimate_epsilon(Y, X, fam)
-      
-      
-      z1=hoeffding.D.test(r2, X1, na.rm = TRUE, collisions = FALSE, precision = 1e-05)$p.value
-      z2=hoeffding.D.test(r1, X2, na.rm = TRUE, collisions = FALSE, precision = 1e-05)$p.value
-      
-      if (z1>=z2) res="1 --> 2"
-      if (z1<z2) res="2 --> 1"
-      
-      if (force_estimate == FALSE) {
-        if(z1>0.05 & z2>0.05) res="Unidentifiable" 
-        if (z1<0.05 & z2<0.05) res = "Unplausible"
-      }
-      
+from_matrix_to_values<-function(variable, dag){
+  if (variable ==1) {
+    if (all(dag[,variable]==c(0,0,0))) {return(1)}
+    else if (all(dag[,variable]==c(0,1,0))) {return(2)}
+    else if (all(dag[,variable]==c(0,0,1))) {return(3)}
+    else if (all(dag[,variable]==c(0,1,1))) {return(4)}
+  }
+  if (variable ==2) {
+    if (all(dag[,variable]==c(0,0,0))) {return(1)}
+    else if (all(dag[,variable]==c(1,0,0))) {return(2)}
+    else if (all(dag[,variable]==c(0,0,1))) {return(3)}
+    else if (all(dag[,variable]==c(1,0,1))) {return(4)}
+  }  
+  if (variable ==3) {
+    if (all(dag[,variable]==c(0,0,0))) {return(1)}
+    else if (all(dag[,variable]==c(1,0,0))) {return(2)}
+    else if (all(dag[,variable]==c(0,1,0))) {return(3)}
+    else if (all(dag[,variable]==c(1,1,0))) {return(4)}
+  }  
+  
+  
+}
+res=c(); #res = final result
+##################We coded it only for d=2 and d=3 using ugly brute-force
+#BIVARIATE CASE
+if (ncol(X)==2) { 
+  X1 = X[,1]; X2 = X[,2]
+  
+  if (force_estimate == FALSE){
+    if (length(X1)>500) { indep = hoeffding.D.test(X1, X2, na.rm = TRUE, collisions = FALSE, precision = 1e-05) }
+    else { indep=dhsic.test(data.frame(X1, X2))}
     
-    res=as.data.frame(c(z1, z2, res))
-    colnames(res)<-c("Causal results (p-values)")
-    rownames(res)<-c("p-value 1-->2", "p-value 2-->1", "Causal graph estimate")
-    return(res)
+    if(indep$p.value>=0.05) {res =  as.data.frame(c("-", "-", "Independence"));     colnames(res)<-c("Causal results (p-values)");    rownames(res)<-c("p-value 1-->2", "p-value 2-->1", "Causal graph estimate")
+    return(res)   }
   }
   
-  #TRIVARIATE CASE
-  if (ncol(X)==3) {
-    X1 = X[,1]; X2 = X[,2]; X3 = X[,3]
-    r123=estimate_epsilon(Y= X1, X=data.frame(X1=  X2  , X2=  X3  ), family = family[1])
-    r12=estimate_epsilon(Y= X1, X=data.frame(X1=  X2   ), family = family[1])
-    r13=estimate_epsilon(Y= X1, X=data.frame(X1=   X3  ), family = family[1])
-    
-    r213=estimate_epsilon(Y= X2, X=data.frame(X1=  X1  , X2=  X3  ), family = family[2])
-    r21=estimate_epsilon(Y= X2, X=data.frame(X1=  X1   ), family = family[2])
-    r23=estimate_epsilon(Y= X2, X=data.frame(X1=  X3  ), family = family[2])
-    
-    r312=estimate_epsilon(Y= X3, X=data.frame(X1=  X1  , X2=  X2  ), family = family[3])
-    r31 =estimate_epsilon(Y= X3, X=data.frame(X1=  X1 ), family = family[3])
-    r32 =estimate_epsilon(Y= X3, X=data.frame(X1=  X2 ), family = family[3])
-    
-    
-    A = data.frame(X1, r12, r13, r123)
-    B = data.frame(X2, r21, r23, r213)
-    C = data.frame(X3, r31, r32, r312)
-    
-    p_values = c(); p_values_adjusted = c()
-    k = length(all_dags)
-    for (i in 1:length(all_dags)) {
-      if(showing_computing_time==TRUE){cat("Time remaining:",k, "\n"); k=k-1}
-      dag = all_dags[[i]]
-      p_value =  multIndepTest(data.frame(A[from_matrix_to_values(1,dag)], 
-                                          B[from_matrix_to_values(2, dag)], 
-                                          C[from_matrix_to_values(3, dag)]) , 
-                               d=c(1,1,1), verbose = FALSE, N=as.integer(1/(2*accuracy)-1) )$fisher.pvalue
-      if(p_value<=accuracy){p_value = 0}
-      p_values = c(p_values,  p_value)
-      p_values_adjusted = c(p_values_adjusted, -log(p_value) + lambda*sum(dag))
-    }
-    
-    M_best = all_dags[[ which.min(p_values_adjusted)    ]]
-    M_plausible = list()
-    plausible = 1:length(all_dags); plausible = plausible[p_values>0.01]
-    for (i in which(p_values > 0.01)[order(p_values_adjusted[plausible])]) {
-      M_plausible = c(M_plausible, list(all_dags[[i]]))
-    }
-    
-    
-    return(list(plausible=M_plausible, p_values=p_values, p_values_adjusted=p_values_adjusted, result=M_best))
-    
+  
+  
+  
+  Y= X2; X = data.frame(X1=  X1);fam = family[2]
+  r2= estimate_epsilon(Y, X, fam)
+  Y= X1; X = data.frame(X1=  X2);fam = family[1]
+  r1= estimate_epsilon(Y, X, fam)
+  
+  
+  z1=hoeffding.D.test(r2, X1, na.rm = TRUE, collisions = FALSE, precision = 1e-05)$p.value
+  z2=hoeffding.D.test(r1, X2, na.rm = TRUE, collisions = FALSE, precision = 1e-05)$p.value
+  
+  if (z1>=z2) res="1 --> 2"
+  if (z1<z2) res="2 --> 1"
+  
+  if (force_estimate == FALSE) {
+    if(z1>0.05 & z2>0.05) res="Unidentifiable" 
+    if (z1<0.05 & z2<0.05) res = "Unplausible"
   }
   
-  if (ncol(X)!=2 && ncol(X)!=3) {
-    return("Sorry, the code is avaliable only for d<=3 for now")
-  }
+  
+  res=as.data.frame(c(z1, z2, res))
+  colnames(res)<-c("Causal results (p-values)")
+  rownames(res)<-c("p-value 1-->2", "p-value 2-->1", "Causal graph estimate")
+  return(res)
 }
 
+#TRIVARIATE CASE
+if (ncol(X)==3) {
+  X1 = X[,1]; X2 = X[,2]; X3 = X[,3]
+  r123=estimate_epsilon(Y= X1, X=data.frame(X1=  X2  , X2=  X3  ), family = family[1])
+  r12=estimate_epsilon(Y= X1, X=data.frame(X1=  X2   ), family = family[1])
+  r13=estimate_epsilon(Y= X1, X=data.frame(X1=   X3  ), family = family[1])
+  
+  r213=estimate_epsilon(Y= X2, X=data.frame(X1=  X1  , X2=  X3  ), family = family[2])
+  r21=estimate_epsilon(Y= X2, X=data.frame(X1=  X1   ), family = family[2])
+  r23=estimate_epsilon(Y= X2, X=data.frame(X1=  X3  ), family = family[2])
+  
+  r312=estimate_epsilon(Y= X3, X=data.frame(X1=  X1  , X2=  X2  ), family = family[3])
+  r31 =estimate_epsilon(Y= X3, X=data.frame(X1=  X1 ), family = family[3])
+  r32 =estimate_epsilon(Y= X3, X=data.frame(X1=  X2 ), family = family[3])
+  
+  
+  A = data.frame(X1, r12, r13, r123)
+  B = data.frame(X2, r21, r23, r213)
+  C = data.frame(X3, r31, r32, r312)
+  
+  p_values = c(); p_values_adjusted = c()
+  k = length(all_dags)
+  for (i in 1:length(all_dags)) {
+    if(showing_computing_time==TRUE){cat("Time remaining:",k, "\n"); k=k-1}
+    dag = all_dags[[i]]
+    p_value =  multIndepTest(data.frame(A[from_matrix_to_values(1,dag)], 
+                                        B[from_matrix_to_values(2, dag)], 
+                                        C[from_matrix_to_values(3, dag)]) , 
+                             d=c(1,1,1), verbose = FALSE, N=as.integer(1/(2*accuracy)-1) )$fisher.pvalue
+    if(p_value<=accuracy){p_value = 0}
+    p_values = c(p_values,  p_value)
+    p_values_adjusted = c(p_values_adjusted, -log(p_value) + lambda*sum(dag))
+  }
+  
+  M_best = all_dags[[ which.min(p_values_adjusted)    ]]
+  M_plausible = list()
+  plausible = 1:length(all_dags); plausible = plausible[p_values>0.01]
+  for (i in which(p_values > 0.01)[order(p_values_adjusted[plausible])]) {
+    M_plausible = c(M_plausible, list(all_dags[[i]]))
+  }
+  
+  
+  return(list(plausible=M_plausible, p_values=p_values, p_values_adjusted=p_values_adjusted, result=M_best))
+  
+}
+
+if (ncol(X)!=2 && ncol(X)!=3) {
+  return("Sorry, the code is avaliable only for d<=3 for now")
+}
+}
 
 
