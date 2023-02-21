@@ -916,6 +916,15 @@ IGCIWrap_G <- function(pair){
   
 }
 
+IGCIWrap_Unif <- function(pair){
+  res = IGCI(data.frame(pair))
+  cd = NA
+  epsilon = NA
+  if(res$cd == "->") cd = 1
+  else if(res$cd == "<-") cd = 0
+  list(epsilon = res$eps, cd = cd)
+  
+}
 
 lingamWrapper = function(t) {
   res = tryCatch({
@@ -949,7 +958,7 @@ lingamWrapper = function(t) {
 }
 
 CAMWrapper <- function(X){
- 
+  
   res = CAM(X, scoreName = "SEMGAM")
   cd = NA
   if(res$Adj[3] == 1) cd = 1
@@ -960,9 +969,9 @@ CAMWrapper <- function(X){
 
 ICMLWrapper <- function(X){
   res=ICML(X,
-            model = train_gp,
-            indtest = indtestHsic,
-            output = FALSE)
+           model = train_gp,
+           indtest = indtestHsic,
+           output = FALSE)
   cd = NA
   epsilon = NA
   if(res$Cd == "->") cd = 1
@@ -1198,7 +1207,6 @@ QCD_wrap <- function(X, Y, type="QCCD", m=7){
   }
   list(cd = cd, eps = res$eps)
 }
-
 
 
 
