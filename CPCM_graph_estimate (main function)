@@ -78,7 +78,7 @@ CPCM_graph_estimate <- function(X, family, force_estimate = FALSE, showing_compu
       
       fit=  gam(list(formula(X, TRUE),formula(X, FALSE)), data.frame(Y,X) ,family=gaulss(), link=list("identity","logb"))
       
-      give_me_generalized_residuals_from_gaulss <-function(Y, fit){ #Note that GAM with GAULSS family does not estimate mu and sigma but mu and 1/sigma. 
+      give_me_epsilons_from_GAULSS <-function(Y, fit){ #Note that GAM with GAULSS family does not estimate mu and sigma, but mu and 1/sigma. Thats why this is here
         residuals=c()
         for (i in 1:length(Y)) {
           residuals=c(residuals,  (Y[i] -fit$fitted.values[i,1])*(fit$fitted.values[i,2]) ) #fit$fitted.values[i,2]=1/sigma[i], fit$fitted.values[i,1]=mu[i]
@@ -86,15 +86,13 @@ CPCM_graph_estimate <- function(X, family, force_estimate = FALSE, showing_compu
         return(residuals)
       }
       
-      residual = give_me_generalized_residuals_from_gaulss(Y, fit)
+      residual = give_me_epsilons_from_GAULSS(Y, fit)
       residual=pnorm(residual)
       
       
       return(residual)
-      
     }
-    
-    
+   
     if (family=="Gaussian with fixed sigma") {
       
       fit=  gam(list(formula(X, TRUE),~1), data.frame(Y,X) ,family=gaulss(), link=list("identity","logb"))
