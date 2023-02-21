@@ -33,7 +33,7 @@ for (i in 1:100) {
   
 X = sample_AN(n) #AN is short for ANMg, i.e. additive noise model with mu generated via Gaussian processes method
 
-r1=r1+ stupid_transmission(CPCM_graph_estimate(X, force_estimate = TRUE))
+r1=r1+ stupid_transmission(CPCM_graph_estimate(X, family = "Gaussian", force_estimate = TRUE))
 #r2=r2+ ResitWrap(X)$cd
 r3=r3+  QCCD(X, m=3)$cd
 #r4=r4+  CAMWrapper(X)$cd
