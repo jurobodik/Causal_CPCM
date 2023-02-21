@@ -28,7 +28,7 @@ stupid_transmission <- function(x){ #return 1 if 1-->2, return 0 if 2-->1
 
 
 n=1000
-r1=0;r2=0;r3=0;r5=0;r6=0;r7=0
+r1=0;r2=0;r3=0;r4=0;r5=0;r6=0;r7=0
 for (i in 1:100) {
   
 X = sample_AN(n) #AN is short for ANMg, i.e. additive noise model with mu generated via Gaussian processes method
