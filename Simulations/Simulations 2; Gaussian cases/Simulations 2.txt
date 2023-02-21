@@ -28,10 +28,10 @@ stupid_transmission <- function(x){ #return 1 if 1-->2, return 0 if 2-->1
 
 
 n=1000
-r1=0;r2=0;r3=0;r5=0;r6=0
+r1=0;r2=0;r3=0;r5=0;r6=0;r7=0
 for (i in 1:100) {
   
-X = sample_AN(n)
+X = sample_AN(n) #AN is short for ANMg, i.e. additive noise model with mu generated via Gaussian processes method
 
 r1=r1+ stupid_transmission(CPCM_graph_estimate(X, force_estimate = TRUE))
 #r2=r2+ ResitWrap(X)$cd
@@ -39,6 +39,7 @@ r3=r3+  QCCD(X, m=3)$cd
 #r4=r4+  CAMWrapper(X)$cd
 r5=r5+  SlopeWrap(X)$cd
 r6=r6+  IGCIWrap_G(X)$cd
+r7=r7+  IGCIWrap_Unif(X)$cd
 
 cat("Time remaining", 100- i, "\n")
 }
@@ -50,6 +51,7 @@ r3/i
 r4/i
 r5/i
 r6/i
+r7/i
 
 #For other columns, change as follows (we rewrote the results by hand)
 #Second column, choose X = sample_ANs(n)
