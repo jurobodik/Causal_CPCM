@@ -41,7 +41,7 @@ CPCM_graph_estimate(data.frame(Z1, Z2), family = "Pareto", force_estimate=FALSE)
 
 
 
-#####################The same as "main idea" but repeating 50 times################################
+#####################The same as "main idea" but repeating 100 times################################
 generate_our_data <- function(n=1000, alpha){
   
   m=100000
