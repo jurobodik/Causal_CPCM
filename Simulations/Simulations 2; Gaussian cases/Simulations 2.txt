@@ -52,7 +52,7 @@ X = sample_AN(n) #AN is short for ANMg, i.e. additive noise model with mu genera
     r6=r6+  IGCIWrap_G(X)$cd
     r7=r7+  IGCIWrap_Unif(X)$cd
     r8=r8+  transmission_for_heci(my_module$HECI(as.array(x), as.array(y)))
-    r9=r9+  transmission_for_loci(my_module$loci(as.array(x), as.array(y)))#We suggest running this separatelly since it takes a long time to run
+    r9=r9+  transmission_for_loci(my_module$loci(as.array(x), as.array(y)))#We suggest running this separatelly since it takes a long time to run (about 30 hours)
 
 cat("Time remaining", 100- i, "\n")
 }
