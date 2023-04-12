@@ -1,7 +1,0 @@
-#Uploading functions defined in python
-#You have to set directory to loci-main
-#Using module in R, we use HECI and loci in R
-
-from causa.datasets import AN, LS, MNU, SIMG, ANs, CausalDataset, Tuebingen, SIM, LSs
-from causa.heci import HECI
-from causa.loci import loci
