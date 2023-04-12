@@ -19,7 +19,7 @@ library(rvinecopulib)
 library(statmod)
 library(qrnn)
 
-
+#Set directory to the downloaded zip bQCD-master.zip from https://github.com/tagas/bQCD.git
 source("R/baselines/Slope/Slope.R")
 source("R/baselines/Slope/utilities.R")
 source("R/baselines/GRAN_EMD/kernelMethod.R")
@@ -27,9 +27,10 @@ source("R/baselines/GRAN_EMD/rkhse.R")
 source("R/baselines/Slope/resit/code/startups/startupLINGAM.R", chdir = TRUE)
 source("R/baselines/Slope/resit/code/startups/startupICML.R", chdir = TRUE)
 
-
-#!/usr/bin/Rscript
-
+#Set directory to the downloaded loci-master.zip from https://github.com/AlexImmer/loci
+library(feather)
+library(reticulate)
+my_module <- import("__main__") #my_module$loci should work now
 
 
 ##### Infer the best model
