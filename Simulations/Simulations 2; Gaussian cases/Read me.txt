@@ -1,3 +1,6 @@
+#This is not the most elegant code, and the code for other methods is a bit messy. The code in python is coded more elegantly in https://github.com/AlexImmer/loci and in R in https://github.com/tagas/bQCD
+#If you want to replicate results from Section 6.2, follow these steps:
+
 #First, download bQCD-master.zip and set directory to the extracted file
 #Second, run data_generators.txt
 #Third, download loci-master.zip from https://github.com/AlexImmer/loci (too big to upload here the zip file)
