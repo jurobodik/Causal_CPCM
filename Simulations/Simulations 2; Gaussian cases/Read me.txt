@@ -15,4 +15,4 @@ from causa.loci import loci
 #finally, open Simulations 2.txt and run it
 
 
-#Note: this is not the most elegant code, and the code for other methods is a bit messy. The code in python is coded more elegantly in https://github.com/AlexImmer/loci and in R in https://github.com/tagas/bQCD
+#Note: this is not the most elegant code. The code in python for the methods is coded more elegantly in https://github.com/AlexImmer/loci and in R in https://github.com/tagas/bQCD
