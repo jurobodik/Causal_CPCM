@@ -1,387 +1,338 @@
+#This is the code for the main function that estimates the causal graph via CPCM, called CPCM_graph_estimate(X, family). 
+#An important step is to estimate epsilons (step one of the algorithm). For that, we assume a model with family F = distribution with q parameters
+#Choices for F are: "Gaussian", "Gaussian with fixed sigma", "Pareto", "Gamma", "Gamma  with fixed scale", "Gumbel", "Gumbel with fixed scale"
+#We always used "gam" function from "MGCV" package for the smooth parameter estimation. 
+#If you want different family than already coded or different method than implemented, it is easy! For that,
+#simply add into function "estimate_epsilon(Y, X, family="YOUR DISTRIBUTION FUNCTION")" a code how you want to estimate your epsilons
+
 library(copula)
 library(boot)
+library(MASS)
 library("evd")
 library("mgcv")
 library("gamlss")
-library(CondIndTests)
-library("twosamples")
-library(tidyverse)
-library(kSamples)
-library(independence)
 library(Pareto)
 library(dHSIC)
 library(rje)
 library(stringr)
-library(TauStar)
-library(randomForest)
-library(rfPermute)
-library(DescTools)
-library(raster)
-library(ambient)
-library(dplyr)
-library(rgl)
-library(reticulate)
-library(feather)
+library(ExtremeRisks)
+library(EnvStats)
 
-####################################################
+##################################   Example   ###########################################
+#set.seed(42)
 #n=500
-#
-#X1 = rnorm(n); X2 = rnorm(n)
-#f=random_function_2d()
-#Y = evaluation_of_f_2d(f, X1, X2)  + rnorm(n) 
-#X3 = Y^2 + X1 + rnorm(n)
-#
-#plot3d(x=X1, y=X2, z=Y)
-#
-#F_identifiable_set_of_parents(Y=Y, X=as.data.frame(cbind(X1, X2, X3)), constraint_set_F="Additive")
-#score_based_F_parents(Y=Y, X=as.data.frame(cbind(X1, X2,X3)), constraint_set_F="Additive")
-###########################Some random helpful functions ##########################
+#X1 = rnorm(n)
+#X2=c();
+#for (i in 1:n) {
+#  X2 = c(X2, rnorm(1, X1[i], X1[i]^2+1))
+#}
+#X= data.frame(X1, X2)
+#CPCM_graph_estimate(X, family = c("Gaussian", "Gaussian"), force_estimate=FALSE) #First "Gaussian" is for direction 2-->1 , Second for direction 1-->2
+#>                       Causal results (p-values)
+#> p-value 1-->2                 0.739182842730139
+#> p-value 2-->1                0.0193744782880139
+#> Causal graph estimate                   1 --> 2
 
-rename_columns_to_1_to_d <-function(X){ 
-  if (is.null(nrow(X))) { return(as.data.frame(X1=X)) }
-  return(X %>% rename_with(~ str_c("X", seq_along(.))))
-}
 
-###
+############################ CPCM estimation of the causal graph ##########################
 
-formula <- function(X, withY=TRUE, smoothing=TRUE, type ='additive'){ #Definition of formula. We want to distinguish between discrete and continous variables for GAM
-  q = ncol(X); if (is.null(nrow(X))) {q=1} 
-  if(withY==TRUE){ form="Y ~ "}
-  if(withY==FALSE){form=" ~ "}
-  if (type =='additive') {
+
+CPCM_graph_estimate <- function(X, family, force_estimate = FALSE, showing_computing_time=TRUE, accuracy = 0.0025){
+  lambda = 2 #penalty for more edges, does not apply for bivariate case
+  n = length(X[,1])
+  if(length(family)==1){family = rep(family, ncol(X))}
+  ##################Just some functions. Note especially estimate_epsilon function, that specifies how we estimate theta under different F
+  estimate_epsilon<-function(Y, X, family="Gaussian"){ 
     
-    for (i in 1:q) {#Discrete variable is if it contains <=9 different values
-      if (  length(unique(X[,i]))>9  ) { 
-        if (smoothing==TRUE) { form=paste(form, paste0("s(X", i,  ")+")) }
-        if (smoothing==FALSE) { form=paste(form, paste0("X", i,  "+")) }
+    ### ### ### ### ### ### ### ###
+    rename_columns_to_1_to_q <-function(X){ #Just making sure that our variables are called X1, X2, ...
+      if (is.null(nrow(X))) {X = as.data.frame(X); names(X)[1] <- "X1"; return(X) }
+      return(X %>% rename_with(~ str_c("X", seq_along(.))))
+    }
+    X = rename_columns_to_1_to_q(X)
+    names(Y)<- "Y"
+    ### ### ### ### ### ### ### ###
+    formula <- function(X, withY=TRUE){ #Definition of formula. We want to distinguish between discrete and continous variables for GAM. But anyway this function basically returns "Y~s(X1) + s(X2)+...+s(Xq)"
+      q = ncol(X); if (is.null(nrow(X))) {q=1} 
+      if(withY==TRUE){ form="Y ~ "}
+      if(withY==FALSE){form=" ~ "}
+      for (i in 1:q) {#Discrete variable is if it contains <=9 different values
+        if (  length(unique(X[,i]))>9  ) { 
+          form=paste(form, paste0("s(X", i,  ")+")) 
+        }
+        if (  length(unique(X[,i]))<=9  ) {  form=paste(form, paste0("as.factor(X", i,  ")+"))  }
       }
-      if (  length(unique(X[,i]))<=9  ) {  form=paste(form, paste0("as.factor(X", i,  ")+"))  }
-    }
-    
-  }
-  
-  if (type =='general') {
-    form=paste(form, paste0("s("))
-    for (i in 1:q) {
-      form=paste(form, paste0("X", i,  ",")) 
-    }
-  }
-  form=substr(form,1,nchar(form)-1)
-  if (type == 'general') { form=paste(form, paste0(")"))}
-  
-  return(as.formula(form))
-}
-
-###
-
-are_all_significant <- function(fit, number_of_parameters=2){
-  all_are_significant=TRUE
-  m=str_count(toString(fit$terms[[3]]), "[0-9]") #How many numbers are in the formula; Chceme iba ziskat pocet covariates in fit
-  vector = summary(fit)[[8]]
-  if (number_of_parameters==2) {
-    for (i in 1:m) {
-      if(min(vector[i], vector[m+i])>0.01) all_are_significant=FALSE
-    }}
-  if (number_of_parameters==1) {
-    for (i in 1:m) {
-      if(vector[i]>0.01) all_are_significant=FALSE
-    }}
-  
-  return(all_are_significant)
-}
-
-significance_maximum <- function(fit, number_of_parameters=2){
-  significance=-Inf
-  #m=str_count(toString(fit$terms[[3]]), "[0-9]") #How many numbers are in the formula; Chceme iba ziskat pocet covariates in fit
-  vector = summary(fit)[[8]]
-  m=length(vector)
-  if (number_of_parameters==1) {
-    for (i in 1:m) {
-      if(vector[i]>significance) significance = vector[i]
-    }}
-  if (number_of_parameters==2) {
-    for (i in 1:(m/number_of_parameters)) { number = min(vector[i], vector[ (m/number_of_parameters)+i])
-    if(number>significance) significance = number
-    }}
-  if (number_of_parameters>2) print('Not implemented, sorry.')
-  if (significance<0.001) {significance = 0.001}
-  
-  return(significance)
-}
-
-is_sample_uniformly_distributed<-function(x){
-  return(AndersonDarlingTest(x, "punif")$p.value)
-}
-##########################################################################
-##########################################################################
-##################   Functions   #########################################
-##########################################################################
-##########################################################################
-
-estimate_epsilon<-function(Y, X, constraint_set_F="Additive"){ 
-  
-  
-  ### ### ### ### ### ### ### ###
-  rename_columns_to_1_to_d <-function(X){ #Just making sure that our variables are called X1, X2, ...
-    if (is.null(nrow(X))) {X = as.data.frame(X); names(X)[1] <- "X1"; return(X) }
-    return(X %>% rename_with(~ str_c("X", seq_along(.))))
-  }
-  X = rename_columns_to_1_to_d(X)
-  names(Y)<- "Y"
-  
-  ### ### ### ### ### ### ### ### Here we start with the estimation of epsilons for each family separately.### ### ### ### ### ### ### ###
-  
-  if (constraint_set_F=="Additive_RF") {
-    
-    
-    fit= randomForest(y=Y, x = X)
-    
-    residual = Y-predict(fit, newdata = X)
-    residual=pnorm(residual)
-    
-    
-    ntree=50; nrep=40
-    fit_for_significance = rfPermute(Y~.,data=data.frame(Y, X),ntree=50, num.rep=nrep)$pval #Computes the p-values for each variable in terms of predictible power
-    significance = max(fit_for_significance[1:nrow(fit_for_significance),1,2]) 
-    significance=significance*(nrep+1)/100 #This is ugly. It is here only because if 'num.rep' is large it takes too much time. So I took only nrep=40 and decreased the resulting pvalue by a factor of ~2 
-    
-    return(data.frame(residual = residual, significance = significance ))
-    
-  }
-  
-  if (constraint_set_F=="Location-scale" || constraint_set_F=="Gaussian"){
-    
-    fit=  gam(list(formula(X, TRUE),formula(X, FALSE)), data.frame(Y,X) ,family=gaulss(), link=list("identity","logb"))
-    
-    give_me_epsilons_from_GAULSS <-function(Y, fit){ #Note that GAM with GAULSS family does not estimate mu and sigma, but mu and 1/sigma. Thats why this is here
-      residuals=c()
-      for (i in 1:length(Y)) {
-        residuals=c(residuals,  (Y[i] -fit$fitted.values[i,1])*(fit$fitted.values[i,2]) ) #fit$fitted.values[i,2]=1/sigma[i], fit$fitted.values[i,1]=mu[i]
-      }
-      return(residuals)
-    }
-    
-    residual = give_me_epsilons_from_GAULSS(Y, fit)
-    residual=pnorm(residual)
-    
-    significance = significance_maximum(fit, number_of_parameters = 2)
-    return(data.frame(residual = residual, significance = significance ))
-  }
-  
-  
-  if (constraint_set_F=="Additive"){
-    
-    fit=  gam(list(formula(X, TRUE, type = 'general'),~1), data.frame(Y,X) ,family=gaulss(), link=list("identity","logb"))
-    
-    give_me_epsilons_from_GAULSS <-function(Y, fit){ #Note that GAM with GAULSS family does not estimate mu and sigma, but mu and 1/sigma. Thats why this is here
-      residuals=c()
-      for (i in 1:length(Y)) {
-        residuals=c(residuals,  (Y[i] -fit$fitted.values[i,1])*(fit$fitted.values[i,2]) ) #fit$fitted.values[i,2]=1/sigma[i], fit$fitted.values[i,1]=mu[i]
-      }
-      return(residuals)
-    }
-    
-    residual = give_me_epsilons_from_GAULSS(Y, fit)
-    residual=pnorm(residual)
-    
-    ntree=50; nrep=40
-    fit_for_significance = rfPermute(Y~.,data=data.frame(Y, X),ntree=50, num.rep=nrep)$pval #Computes the p-values for each variable in terms of predictible power
-    significance = max(fit_for_significance[1:nrow(fit_for_significance),1,2]) 
-    significance=significance*(nrep+1)/100 #This is ugly. It is here only because if 'num.rep' is large it takes too much time. So I took only nrep=40 and decreased the resulting pvalue by a factor of ~2 
-    
-    return(data.frame(residual = residual, significance = significance ))
-  }
-  
-  
-  
-  if (constraint_set_F=="Pareto") {
-    
-    Y=-log(log(Y)) #Trick: -loglog of pareto is gumbel which is implemented in GAM package
-    fit=  gam(list(formula(X, TRUE, type = 'general'), ~1), data.frame(Y,X) ,family=gumbls())
-    residual=c()
-    for (i in 1:n) {
-      residual=c(residual,  pgumbel(Y[i], (fit$fitted.values[i,1]-0.577), 1)  )
-    }
-    
-    
-    significance = significance_maximum(gam(list(formula(X, TRUE), ~1), data.frame(Y,X) ,family=gumbls()), number_of_parameters = 1)
-    
-    return(data.frame(residual = residual, significance = significance ))
-    
-  }
-  
-  
-  
-  if (constraint_set_F=="Gumbel") {
-    
-    fit=  gam(list(formula(X, TRUE), formula(X, FALSE), type = 'general'), data.frame(Y,X) ,family=gumbls())
-    residual=c()
-    for (i in 1:n) {
-      residual=c(residual,  pgumbel(Y[i], fit$fitted.values[i,1], exp(fit$fitted.values[i,2]))  )
-    }
-    
-    significance = significance_maximum(gam(list(formula(X, TRUE), formula(X, FALSE)), data.frame(Y,X) ,family=gumbls()), number_of_parameters = 2)
-    
-    return(data.frame(residual = residual, significance = significance ))
-    
-  }
-  
-  if (constraint_set_F=="Gamma") {
-    
-    fit=  gam(list(formula(X, TRUE, type = 'general'),formula(X, FALSE, type = 'general')), data.frame(Y,X) ,family=gammals())
-    give_me_generalized_residuals_from_gammals <-function(Y, fit){
-      residuals=c()
-      for (i in 1:length(Y)) {
-        residuals=c(residuals,  pgamma( Y[i], shape = 1/exp(fitted(fit)[i,2]), scale = fitted(fit)[i,1]*exp(fitted(fit)[i,2])   ) ) 
-      }
-      return(residuals)
-    }
-    residual = give_me_generalized_residuals_from_gammals(Y, fit)
-    
-    significance = significance_maximum(gam(list(formula(X, TRUE),formula(X, FALSE)), data.frame(Y,X) ,family=gammals()), number_of_parameters = 2)
-    
-    return(data.frame(residual = residual, significance = significance ))
-    
-  }
-  
-  if (constraint_set_F=="Gamma with fixed scale") {
-    
-    fit=  gam(list(formula(X, TRUE, type = 'general'),~1), data.frame(Y,X) ,family=gammals())
-    
-    give_me_generalized_residuals_from_gammals <-function(Y, fit){
-      residuals=c()
-      for (i in 1:length(Y)) {
-        residuals=c(residuals,  pgamma( Y[i], shape = 1/exp(fitted(fit)[i,2]), scale = fitted(fit)[i,1]*exp(fitted(fit)[i,2])   )) 
-      }
-      return(residuals)
-    }
-    
-    residual = give_me_generalized_residuals_from_gammals(Y, fit)
-    
-    significance = significance_maximum( gam(list(formula(X, TRUE),~1), data.frame(Y,X) ,family=gammals()), number_of_parameters = 1)
-    
-    return(data.frame(residual = residual, significance = significance ))
-    
-  }
-  
-  
-  print("Family not implemented, sorry.")
-  return("Family not implemented, sorry.")
-  
-}
-
-
-p_value_of_independence<- function(epsilon, Z, accuracy = 0.0025){
-  if (is.null(nrow(Z))) { numberofcolumns = 1} else {numberofcolumns = ncol(Z)}
-  x=matrix(as.matrix(Z), ncol=numberofcolumns); #x=matrix(c(X1), ncol=1); 
-  y=matrix(epsilon, ncol=1)
-  
-  if (numberofcolumns==1) { pvalue=hoeffding.D.test(as.vector(x),as.vector(y), na.rm = TRUE, collisions = FALSE, precision = accuracy/26)$p.value  }
-  else{ if(length(epsilon)<=1000){pvalue=dhsic.test(list(x,y))$p.value  }
-    else{  pvalue=multIndepTest(data.frame(x,y) , d=rep(1, ncol(x)+1), verbose = FALSE, N=as.integer(1/(2*accuracy)-1) )$fisher.pvalue}
-  }
-  
-  return(pvalue + 0.000001) #+0.000001 is there as a cutoff value so we do not return zero value (and we later take log(0))
-}
-
-
-F_identifiable_set_of_parents<- function(Y, X, constraint_set_F="Additive"){
-  X = rename_columns_to_1_to_d(X)
-  m=ncol(X); if (is.null(nrow(X))) {m=1}
-  pvalues=0
-  p=powerSet(colnames(X))
-  
-  for (i in 2:length(p)) {
-    
-    do_we_need_to_compute_this <- function(){ #if we already did not rejected some subset of p[[i]] then it is not nessesary to continue
-      we_need_it=TRUE
       
-      if(i>3){for (j in 1:(i-1)) {
-        if (pvalues[j]>0.05 && all(p[[j]] %in% p[[i]])) {
-          we_need_it=FALSE }}}
-      return(we_need_it)}
-    
-    if(do_we_need_to_compute_this()==TRUE){
-      
-      set=powerSet(1:m)[[i]]
-      epsilon_hat=estimate_epsilon(Y, as.data.frame(X[,set]), constraint_set_F)
-      distribution_test =  constraint_set_F=="Additive" || constraint_set_F=="Location-scale" || AndersonDarlingTest(epsilon_hat$residual, "punif")$p.value>0.05 
-      new_pvalue=0
-      if (epsilon_hat$significance[1]<0.05) { #Significance
-        if (distribution_test==TRUE)  #Distribution
-          new_pvalue=p_value_of_independence(epsilon_hat$residual, X[,set]) }
-      pvalues=c(pvalues, round( new_pvalue, digits = 6) )
+      form=as.formula(  substr(form,1,nchar(form)-1)  )
+      return(form)
     }
-    else{ pvalues=c(pvalues, 1 )}
-  }  
+    ### ### ### ### ### ### ### ### Here we start with the estimation of epsilons for each family separately.### ### ### ### ### ### ### ###
+    
+    
+    if (family=="Gaussian") {
+      
+      fit=  gam(list(formula(X, TRUE),formula(X, FALSE)), data.frame(Y,X) ,family=gaulss(), link=list("identity","logb"))
+      
+      give_me_epsilons_from_GAULSS <-function(Y, fit){ #Note that GAM with GAULSS family does not estimate mu and sigma, but mu and 1/sigma. Thats why this is here
+        residuals=c()
+        for (i in 1:length(Y)) {
+          residuals=c(residuals,  (Y[i] -fit$fitted.values[i,1])*(fit$fitted.values[i,2]) ) #fit$fitted.values[i,2]=1/sigma[i], fit$fitted.values[i,1]=mu[i]
+        }
+        return(residuals)
+      }
+      
+      residual = give_me_epsilons_from_GAULSS(Y, fit)
+      residual=pnorm(residual)
+      
+      
+      return(residual)
+    }
+    
+    if (family=="Gaussian with fixed sigma") {
+      
+      fit=  gam(list(formula(X, TRUE),~1), data.frame(Y,X) ,family=gaulss(), link=list("identity","logb"))
+      
+      give_me_generalized_residuals_from_gaulss <-function(Y, fit){
+        residuals=c()
+        for (i in 1:length(Y)) {
+          residuals=c(residuals,  (Y[i] -fit$fitted.values[i,1])*(fit$fitted.values[i,2]) ) #fit$fitted.values[i,2]=1/sigma[i], fit$fitted.values[i,1]=mu[i]
+        }
+        return(residuals)
+      }
+      
+      residual = give_me_generalized_residuals_from_gaulss(Y, fit)
+      residual=pnorm(residual)
+      
+      
+      return(residual)
+      
+    }
+    
+    
+    
+    if (family=="Pareto") {
+      
+      Y=-log(log(Y))
+      fit=  gam(list(formula(X, TRUE), ~1), data.frame(Y,X) ,family=gumbls())
+      residual=c()
+      for (i in 1:n) {
+        residual=c(residual,  pgumbel(Y[i], fit$fitted.values[i,1], 1)  )
+      }
+      
+      
+      return(residual)
+      
+    }
+    if (family=="Gumbel") {
+      
+      fit=  gam(list(formula(X, TRUE), formula(X, FALSE)), data.frame(Y,X) ,family=gumbls())
+      residual=c()
+      for (i in 1:n) {
+        residual=c(residual,  pgumbel(Y[i], fit$fitted.values[i,1], exp(fit$fitted.values[i,2]))  )
+      }
+      
+      return(residual)
+      
+    }
+    
+    if (family=="Gumbel with fixed scale") {
+      
+      fit=  gam(list(formula(X, TRUE), ~1), data.frame(Y,X) ,family=gumbls())
+      residual=c()
+      for (i in 1:n) {
+        residual=c(residual,  pgumbel(Y[i], fit$fitted.values[i,1], exp(fit$fitted.values[i,2]))  )
+      }
+      
+      return(residual)
+      
+    }
+    
+    
+    
+    if (family=="Gamma") {
+      
+      fit=  gam(list(formula(X, TRUE),formula(X, FALSE)), data.frame(Y,X) ,family=gammals())
+      
+      give_me_generalized_residuals_from_gammals <-function(Y, fit){
+        residuals=c()
+        for (i in 1:length(Y)) {
+          residuals=c(residuals,  pgamma( Y[i], shape = 1/exp(fitted(fit)[i,2]), scale = fitted(fit)[i,1]*exp(fitted(fit)[i,2])   ) ) 
+        }
+        return(residuals)
+      }
+      
+      return(give_me_generalized_residuals_from_gammals(Y, fit))
+      
+    }
+    
+    if (family=="Gamma with fixed scale") {
+      
+      fit=  gam(list(formula(X, TRUE),~1), data.frame(Y,X) ,family=gammals())
+      
+      give_me_generalized_residuals_from_gammals <-function(Y, fit){
+        residuals=c()
+        for (i in 1:length(Y)) {
+          residuals=c(residuals,  pgamma( Y[i], shape = 1/exp(fitted(fit)[i,2]), scale = fitted(fit)[i,1]*exp(fitted(fit)[i,2])   )) 
+        }
+        return(residuals)
+      }
+      
+      residual = give_me_generalized_residuals_from_gammals(Y, fit)
+      
+      
+      return(residual)
+      
+    }
+    
+    
+    
+    return(  "Family not implemented, sorry.")
+    
+  }
   
-  #since here its just handling the output into a nice form
-  z=Reduce(intersect, p[pvalues>0.05])
-  if(identical( Reduce(intersect, p[pvalues>0.05]), integer(0))){z="EMPTY"}
+  make_all_dags_on_three_nodes <-function(){#I am sorry about this monstrosity. Thanks chatGPT for generating it
+    all_dags = list()
+    all_dags[[length(all_dags)+1]] = matrix(c(0,0,0,   0,0,0,    0,0,0), nrow = 3, ncol = 3, byrow = TRUE)
+    all_dags[[length(all_dags)+1]] = matrix(c(0,1,0,   0,0,0,    0,0,0), nrow = 3, ncol = 3, byrow = TRUE)
+    all_dags[[length(all_dags)+1]] = matrix(c(0,1,0,   0,0,1,    0,0,0), nrow = 3, ncol = 3, byrow = TRUE)
+    all_dags[[length(all_dags)+1]] = matrix(c(0,1,0,   0,0,0,    0,1,0), nrow = 3, ncol = 3, byrow = TRUE)
+    all_dags[[length(all_dags)+1]] = matrix(c(0,1,0,   0,0,0,    1,0,0), nrow = 3, ncol = 3, byrow = TRUE)
+    all_dags[[length(all_dags)+1]] = matrix(c(0,1,0,   0,0,0,    1,1,0), nrow = 3, ncol = 3, byrow = TRUE)
+    all_dags[[length(all_dags)+1]] = matrix(c(0,1,1,   0,0,0,    0,0,0), nrow = 3, ncol = 3, byrow = TRUE)
+    all_dags[[length(all_dags)+1]] = matrix(c(0,1,1,   0,0,1,    0,0,0), nrow = 3, ncol = 3, byrow = TRUE)
+    all_dags[[length(all_dags)+1]] = matrix(c(0,1,1,   0,0,0,    0,1,0), nrow = 3, ncol = 3, byrow = TRUE)
+    all_dags[[length(all_dags)+1]] = matrix(c(0,0,1,   0,0,1,    0,0,0), nrow = 3, ncol = 3, byrow = TRUE)
+    
+    all_dags[[length(all_dags)+1]] = matrix(c(0,0,1,   0,0,0,    0,1,0), nrow = 3, ncol = 3, byrow = TRUE)
+    all_dags[[length(all_dags)+1]] = matrix(c(0,0,1,   1,0,0,    0,0,0), nrow = 3, ncol = 3, byrow = TRUE)
+    all_dags[[length(all_dags)+1]] = matrix(c(0,0,1,   1,0,1,    0,0,0), nrow = 3, ncol = 3, byrow = TRUE)
+    all_dags[[length(all_dags)+1]] = matrix(c(0,0,1,   0,0,0,    0,0,0), nrow = 3, ncol = 3, byrow = TRUE)
+    all_dags[[length(all_dags)+1]] = matrix(c(0,0,0,   1,0,0,    0,0,0), nrow = 3, ncol = 3, byrow = TRUE)
+    all_dags[[length(all_dags)+1]] = matrix(c(0,0,0,   0,0,1,    0,0,0), nrow = 3, ncol = 3, byrow = TRUE)
+    all_dags[[length(all_dags)+1]] = matrix(c(0,0,0,   0,0,0,    1,0,0), nrow = 3, ncol = 3, byrow = TRUE)
+    all_dags[[length(all_dags)+1]] = matrix(c(0,0,0,   0,0,0,    0,1,0), nrow = 3, ncol = 3, byrow = TRUE)
+    all_dags[[length(all_dags)+1]] = matrix(c(0,0,0,   1,0,0,    0,1,0), nrow = 3, ncol = 3, byrow = TRUE)
+    all_dags[[length(all_dags)+1]] = matrix(c(0,0,0,   1,0,0,    1,0,0), nrow = 3, ncol = 3, byrow = TRUE)
+    
+    all_dags[[length(all_dags)+1]] = matrix(c(0,0,0,   1,0,0,    1,1,0), nrow = 3, ncol = 3, byrow = TRUE)
+    all_dags[[length(all_dags)+1]] = matrix(c(0,0,0,   1,0,1,    0,1,0), nrow = 3, ncol = 3, byrow = TRUE)
+    all_dags[[length(all_dags)+1]] = matrix(c(0,0,0,   0,0,0,    1,1,0), nrow = 3, ncol = 3, byrow = TRUE)
+    all_dags[[length(all_dags)+1]] = matrix(c(0,0,0,   1,0,1,    1,0,0), nrow = 3, ncol = 3, byrow = TRUE)
+    all_dags[[length(all_dags)+1]] = matrix(c(0,0,0,   1,0,1,    0,0,0), nrow = 3, ncol = 3, byrow = TRUE)
+    
+    return(all_dags)}
+  all_dags = make_all_dags_on_three_nodes()
   
-  p[[1]]='Empty set'
-  for (i in 2:length(p)) {p[[i]] = paste(p[[i]], collapse=", ")  }
+  from_matrix_to_values<-function(variable, dag){
+    if (variable ==1) {
+      if (all(dag[,variable]==c(0,0,0))) {return(1)}
+      else if (all(dag[,variable]==c(0,1,0))) {return(2)}
+      else if (all(dag[,variable]==c(0,0,1))) {return(3)}
+      else if (all(dag[,variable]==c(0,1,1))) {return(4)}
+    }
+    if (variable ==2) {
+      if (all(dag[,variable]==c(0,0,0))) {return(1)}
+      else if (all(dag[,variable]==c(1,0,0))) {return(2)}
+      else if (all(dag[,variable]==c(0,0,1))) {return(3)}
+      else if (all(dag[,variable]==c(1,0,1))) {return(4)}
+    }  
+    if (variable ==3) {
+      if (all(dag[,variable]==c(0,0,0))) {return(1)}
+      else if (all(dag[,variable]==c(1,0,0))) {return(2)}
+      else if (all(dag[,variable]==c(0,1,0))) {return(3)}
+      else if (all(dag[,variable]==c(1,1,0))) {return(4)}
+    }  
+    
+    
+  }
+  res=c(); #res = final result
+  ##################We coded it only for d=2 and d=3 using ugly brute-force
+  #BIVARIATE CASE
+  if (ncol(X)==2) { 
+    X1 = X[,1]; X2 = X[,2]
+    
+    if (force_estimate == FALSE){
+      if (length(X1)>500) { indep = hoeffding.D.test(X1, X2, na.rm = TRUE, collisions = FALSE, precision = 1e-05) }
+      else { indep=dhsic.test(data.frame(X1, X2))}
+      
+      if(indep$p.value>=0.05) {res =  as.data.frame(c("-", "-", "Independence"));     colnames(res)<-c("Causal results (p-values)");    rownames(res)<-c("p-value 1-->2", "p-value 2-->1", "Causal graph estimate")
+      return(res)   }
+    }
+    
+    
+    
+    
+    Y= X2; X = data.frame(X1=  X1);fam = family[2]
+    r2= estimate_epsilon(Y, X, fam)
+    Y= X1; X = data.frame(X1=  X2);fam = family[1]
+    r1= estimate_epsilon(Y, X, fam)
+    
+    
+    z1=hoeffding.D.test(r2, X1, na.rm = TRUE, collisions = FALSE, precision = 1e-05)$p.value
+    z2=hoeffding.D.test(r1, X2, na.rm = TRUE, collisions = FALSE, precision = 1e-05)$p.value
+    
+    if (z1>=z2) res="1 --> 2"
+    if (z1<z2) res="2 --> 1"
+    
+    if (force_estimate == FALSE) {
+      if(z1>0.05 & z2>0.05) res="Unidentifiable" 
+      if (z1<0.05 & z2<0.05) res = "Unplausible"
+    }
+    
+    
+    res=as.data.frame(c(z1, z2, res))
+    colnames(res)<-c("Causal results (p-values)")
+    rownames(res)<-c("p-value 1-->2", "p-value 2-->1", "Causal graph estimate")
+    return(res)
+  }
   
-  result=  as.data.frame( c(pvalues, "___________", paste(z,  collapse=" ") )  )
-  colnames(result)<-c("p.values")
-  rownames(result)<-c(p, "__________", "Intersection")
+  #TRIVARIATE CASE
+  if (ncol(X)==3) {
+    X1 = X[,1]; X2 = X[,2]; X3 = X[,3]
+    r123=estimate_epsilon(Y= X1, X=data.frame(X1=  X2  , X2=  X3  ), family = family[1])
+    r12=estimate_epsilon(Y= X1, X=data.frame(X1=  X2   ), family = family[1])
+    r13=estimate_epsilon(Y= X1, X=data.frame(X1=   X3  ), family = family[1])
+    
+    r213=estimate_epsilon(Y= X2, X=data.frame(X1=  X1  , X2=  X3  ), family = family[2])
+    r21=estimate_epsilon(Y= X2, X=data.frame(X1=  X1   ), family = family[2])
+    r23=estimate_epsilon(Y= X2, X=data.frame(X1=  X3  ), family = family[2])
+    
+    r312=estimate_epsilon(Y= X3, X=data.frame(X1=  X1  , X2=  X2  ), family = family[3])
+    r31 =estimate_epsilon(Y= X3, X=data.frame(X1=  X1 ), family = family[3])
+    r32 =estimate_epsilon(Y= X3, X=data.frame(X1=  X2 ), family = family[3])
+    
+    
+    A = data.frame(X1, r12, r13, r123)
+    B = data.frame(X2, r21, r23, r213)
+    C = data.frame(X3, r31, r32, r312)
+    
+    p_values = c(); p_values_adjusted = c()
+    k = length(all_dags)
+    for (i in 1:length(all_dags)) {
+      if(showing_computing_time==TRUE){cat("Time remaining:",k, "\n"); k=k-1}
+      dag = all_dags[[i]]
+      p_value =  multIndepTest(data.frame(A[from_matrix_to_values(1,dag)], 
+                                          B[from_matrix_to_values(2, dag)], 
+                                          C[from_matrix_to_values(3, dag)]) , 
+                               d=c(1,1,1), verbose = FALSE, N=as.integer(1/(2*accuracy)-1) )$fisher.pvalue
+      if(p_value<=accuracy){p_value = 0}
+      p_values = c(p_values,  p_value)
+      p_values_adjusted = c(p_values_adjusted, -log(p_value) + lambda*sum(dag))
+    }
+    
+    M_best = all_dags[[ which.min(p_values_adjusted)    ]]
+    M_plausible = list()
+    plausible = 1:length(all_dags); plausible = plausible[p_values>0.01]
+    for (i in which(p_values > 0.01)[order(p_values_adjusted[plausible])]) {
+      M_plausible = c(M_plausible, list(all_dags[[i]]))
+    }
+    
+    
+    return(list(plausible=M_plausible, p_values=p_values, p_values_adjusted=p_values_adjusted, result=M_best))
+    
+  }
   
-  
-  return(result)
+  if (ncol(X)!=2 && ncol(X)!=3) {
+    return("Sorry, the code is avaliable only for d<=3 for now")
+  }
 }
-
-
-
-
-score_based_F_parents<- function(Y, X, constraint_set_F="Additive", show_intermediate_results=TRUE){
-  lambda1 = 1
-  lambda2 = 1
-  lambda3 = 1; if(constraint_set_F=="Additive" || constraint_set_F=="Location-scale") lambda3 = 0
-  
-  X = rename_columns_to_1_to_d(X)
-  m=ncol(X); if (is.null(nrow(X))) {m=1}
-  pvalues=0; score=-Inf; independence = 0;  significance = 1; distribution = 1
-  p=powerSet(colnames(X))
-  
-  for (i in 2:length(p)) {
-    
-    set=powerSet(1:m)[[i]]
-    epsilon_hat=estimate_epsilon(Y, as.data.frame(X[ ,set]), constraint_set_F) #Estimate epsilon
-    
-    new_significance = epsilon_hat$significance[1] #Significance
-    new_independence = p_value_of_independence(epsilon_hat$residual, X[,set])#Independence
-    
-    if(constraint_set_F=="Additive" || constraint_set_F=="Location-scale"){#Distribution
-      distribution_test = 1} else distribution_test= AndersonDarlingTest(epsilon_hat$residual, "punif")$p.value
-    
-    
-    new_score =  lambda1*(log(new_independence)) + lambda2*(-log(new_significance)) + lambda3*log( distribution_test )
-    
-    new_pvalue = 0
-    if (new_significance<0.05 & distribution_test>0.01) {   new_pvalue = round(new_independence, digits = 6) }
-    
-    independence = c(independence,new_independence)
-    significance = c(significance,new_significance)
-    distribution = c(distribution,distribution_test)
-    pvalues=c(pvalues,new_pvalue)
-    score = c(score, new_score)
-    if(show_intermediate_results==TRUE) cat(set, ': ', new_score,', I, S, D: ',new_independence, '||| ',new_significance, '||| ',distribution_test, "\n")
-  }  
-  
-  #This is just handling the output into a nice form
-  identifiable_parents=paste( Reduce(intersect, p[pvalues>0.05]),collapse = " ")
-  if(identical( Reduce(intersect, p[pvalues>0.05]), character(0))||identical( Reduce(intersect, p[pvalues>0.05]), NULL)){identifiable_parents="EMPTY"}
-  score_estimate = "   "; for (i in 1:length(powerSet(1:m)[[which.max(score)]])) {score_estimate = paste0(score_estimate, "X", powerSet(1:m)[[which.max(score)]][i], " ")}
-  
-  p[[1]]='Empty set'
-  for (i in 2:length(p)) {p[[i]] = paste(p[[i]], collapse=" ")  }
-  
-  result= round( data.frame(score = score, independence = independence, significance = significance, distribution=distribution), digits = 3)
-  result[nrow(result)+1,] = c('---', '---', '---', '---')
-  result[nrow(result)+1,] = c(score_estimate, ' ', ' ', ' ')
-  result[nrow(result)+1,] = c(identifiable_parents, ' ' , ' ', ' ')
-  
-  rownames(result)<-c(p,"---", "Score-based estimate:", "Identifiable causes:")
-  return(result)
-}
-
