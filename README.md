@@ -37,7 +37,7 @@ If you want to use CPCM(F) model with given $F$, the choices for 'family_of_dist
 
 ### Output 
 In the bivariate case, the output is in the following format:
--                                      Results
+                                     
 - p-value 1-->2                       0.909445
 - p-value 2-->1                       0.000015
 - Score-based graph estimate           1 --> 2
