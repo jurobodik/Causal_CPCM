@@ -41,8 +41,8 @@ In the bivariate case, the output is in the following format:
 - p-value 1-->2                       0.909445     (represents the p-value of the independence test between X1 and hat{epsilon_2})
 - p-value 2-->1                       0.000015     (represents the p-value of the independence test between X2 and hat{epsilon_1})
 - Score-based graph estimate           1 --> 2     (Score-based graph estimate represents the final estimate of the graph)
-- Testing estimate                     1 --> 2     (Testing estimate represents the final estimate of the graph using Algorithm 1. Note that five different outputs are possible. 
-- Families used              Gaussian;Gaussian     (first is the family used for X1 and the second is the family used for X2 (that is, family with the same support). 
+- Testing estimate                     1 --> 2     (Testing estimate represents the final estimate of the graph using Algorithm 1. Note that five different outputs are possible) 
+- Families used              Gaussian;Gaussian     (first is the family used for X1 and the second is the family used for X2 (that is, family with the same support)
 
 
 ## Example
