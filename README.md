@@ -37,12 +37,12 @@ If you want to use CPCM(F) model with given $F$, the choices for 'family_of_dist
 
 ### Output 
 In the bivariate case, the output is in the following format:
-`                                    Results
-p-value 1-->2                       0.909445
-p-value 2-->1                       0.000015
-Score-based graph estimate           1 --> 2
-Testing estimate                     1 --> 2
-Families used              Gaussian;Gaussian`
+-                                    Results
+-p-value 1-->2                       0.909445
+-p-value 2-->1                       0.000015
+-Score-based graph estimate           1 --> 2
+-Testing estimate                     1 --> 2
+-Families used              Gaussian;Gaussian`
 
 -p-value 1-->2  represents the p-value of the independence test between X1 and hat{epsilon_2}
 -p-value 2-->1  represents the p-value of the independence test between X2 and hat{epsilon_1}
