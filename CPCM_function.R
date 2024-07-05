@@ -29,16 +29,16 @@ library(dplyr)
 library(independence)
 
 ##################################   Example   ###########################################
-  n=500
-  X1 = rnorm(n)
-  X2=c();
-  for (i in 1:n) {
-    X2 = c(X2, rnorm(1, X1[i], X1[i]^2+1))
-  }
-  X= data.frame(X1, X2)
-  CPCM_graph_estimate(X, family_of_distributions = 2) 
-  
-  plot(X)
+#  n=500
+#  X1 = rnorm(n)
+#  X2=c();
+#  for (i in 1:n) {
+#    X2 = c(X2, rnorm(1, X1[i], X1[i]^2+1))
+#  }
+#  X= data.frame(X1, X2)
+#  CPCM_graph_estimate(X, family_of_distributions = 2) 
+#  
+#  plot(X)
 ############################ CPCM estimation of the causal graph ##########################
   
 
