@@ -38,19 +38,12 @@ If you want to use CPCM(F) model with given $F$, the choices for 'family_of_dist
 ### Output 
 In the bivariate case, the output is in the following format:
                                      
-- p-value 1-->2                       0.909445
-- p-value 2-->1                       0.000015
-- Score-based graph estimate           1 --> 2
-- Testing estimate                     1 --> 2
-- Families used              Gaussian;Gaussian
+- p-value 1-->2                       0.909445     (represents the p-value of the independence test between X1 and hat{epsilon_2})
+- p-value 2-->1                       0.000015     (represents the p-value of the independence test between X2 and hat{epsilon_1})
+- Score-based graph estimate           1 --> 2     (Score-based graph estimate represents the final estimate of the graph)
+- Testing estimate                     1 --> 2     (Testing estimate represents the final estimate of the graph using Algorithm 1. Note that five different outputs are possible. 
+- Families used              Gaussian;Gaussian     (first is the family used for X1 and the second is the family used for X2 (that is, family with the same support). 
 
-
-
-- p-value 1-->2  represents the p-value of the independence test between X1 and hat{epsilon_2}
-- p-value 2-->1  represents the p-value of the independence test between X2 and hat{epsilon_1}
-- Score-based graph estimate represents the final estimate of the graph
-- Testing estimate represents the final estimate of the graph using Algorithm 1. Note that five different options can happen:  1) $X_1\indep X_2$, 2) $X_1\to X_2$, 3) $X_2\to X_1$, 4) ``unidentifiable setup'' (both directions appear to be plausible) and 5) ``Assumptions not fulfilled'' (neither direction appear to be plausible). 
-- Families used: first is the family used for X1 and the second is the family used for X2 (that is, family with the same support). 
 
 ## Example
 
