@@ -61,4 +61,11 @@ plot(X)
 # Estimate causal graph using CPCM
 CPCM_graph_estimate(X, family_of_distributions = 2)
 CPCM_graph_estimate(X, family_of_distributions = 'Gaussian') #The same results, but forces the use of Gaussian F
+
+#>                                     Results
+#>p-value 1-->2                       0.909445
+#>p-value 2-->1                       0.000015
+#>Score-based graph estimate           1 --> 2
+#>Testing estimate                     1 --> 2
+#>Families used              Gaussian;Gaussian
 ```
