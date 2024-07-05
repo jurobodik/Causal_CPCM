@@ -1,17 +1,14 @@
 #If you want to replicate results from Section 6.2 in the manuscript, follow these steps:
-#Note: you can skip steps 4 and 5 (and skip lines 30-33 in baselines.txt) if you dont need to run in-python-coded algorithms LOCI and HECI.
 
-#First, open CPCM.txt file and run the file (it contains CPCM function)
-#Second, download bQCD-master.zip and set directory to the extracted file
-#Third, run Data_generators.R
-#Fourth, download loci-master.zip from https://github.com/AlexImmer/loci (too big to upload here the zip file)
-#Fifth, in order to run the codes coded in python, open a python modul, set directory to loci-master.zip and run the following chuck of code:
+#First, open CPCM.txt file and run the file (it contains the CPCM function)
+#Second, download bQCD-master.zip (https://github.com/tagas/bQCD) and loci-master.zip (from https://github.com/AlexImmer/loci) 
+#Third, in order to run the codes coded in python, open a python modul, set directory to the extracted loci-master.zip and run the following chuck of code:
 
 from causa.datasets import AN, LS, MNU, SIMG, ANs, CausalDataset, Tuebingen, SIM, LSs
 from causa.heci import HECI
 from causa.loci import loci
 
-#Sixth, open Baseline_methods_in_R.R and run it
+#Fourth, set directory to the extracted bQCD-master.zip file and run Data_generators.R and Baseline_methods_in_R.R 
 #finally, open Simulations 2.txt and run it
 
 
