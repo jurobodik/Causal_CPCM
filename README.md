@@ -28,7 +28,7 @@ For `family_of_distributions = 2`:
 - `Negative_binomial`
 
 
-If you want to use CPCM(F) model with given $F$, the choices for 'family_of_distributions' are the following: "Gaussian", "Gaussian with fixed sigma", "Pareto", "Gamma", "Gamma with fixed scale", "Gumbel", "Gumbel with fixed scale", 'Negative_binomial', 'Poisson'
+If you want to use CPCM(F) model with given $F$, the choices for 'family_of_distributions' are the following: `Gaussian`, `Gaussian with fixed sigma`, `Pareto`, `Gamma`, `Gamma with fixed scale`, `Gumbel`, `Gumbel with fixed scale`, `Negative_binomial`, `Poisson`
 
 ### Rule of Thumb
 
