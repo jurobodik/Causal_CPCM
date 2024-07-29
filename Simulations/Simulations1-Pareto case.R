@@ -8,6 +8,9 @@
 library(ggplot2)
 library(ggpattern)
 library(gridExtra)
+library(Pareto) #Or other package to generate Pareto random variables
+
+
 
 set.seed(1)
 #The following function generates the random sample following the distribution from CPCM(F) where 
