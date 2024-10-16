@@ -13,6 +13,7 @@ The function `CPCM_graph_estimate(X, family_of_distributions, force_estimate)` e
 - **family_of_distributions**: Specifies the family of distributions to use:
   - `1`: Uses a joint model CPCM(F1...Fk) with 1-parameter distributions.
   - `2`: Uses a joint model CPCM(F1...Fk) with 2-parameter distributions.
+  - `DistributionName`: Uses a model CPCM(F) where F=DistributionName. Choices are written below.
 - **force_estimate**: Optional parameter (default `FALSE`). If set to `TRUE`, an empty graph is not allowed.
 
 ### Available Distributions
