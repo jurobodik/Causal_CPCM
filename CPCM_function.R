@@ -7,7 +7,7 @@
 #family_of_distributions = 1 if we use family1
 #family_of_distributions = 2 if we use family2
 
-#Rule of thumb is that we use family1 if n<=1000 and we use family2 if n>1000, but it should depend on the complexity of the dataset
+#Rule of thumb is that we use family1 if n<=1000 and we use family2 if n>1000, but it should depend on the complexity of the dataset; that is, first try family1 and if all graphs are not plausible, use family2
 
 #If you want to use CPCM(F) model, the choices for 'family_of_distributions' 
 #are the follwing: "Gaussian", "Gaussian with fixed sigma", "Pareto", "Gamma", "Gamma with fixed scale", "Gumbel", "Gumbel with fixed scale"
