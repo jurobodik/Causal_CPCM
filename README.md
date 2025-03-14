@@ -39,6 +39,8 @@ Good approach is to first try family1 and if all graphs are not plausible, use f
   but again, this choice should depend on the dataset complexity.
 
 ### Output 
+Output format depends on the dimension of X. 
+
 In the bivariate case, the output is in the following format:
                                      
 - p-value 1-->2                       0.909445     (represents the p-value of the independence test between X1 and hat{epsilon_2})
@@ -46,6 +48,15 @@ In the bivariate case, the output is in the following format:
 - Score-based graph estimate           1 --> 2     (Score-based graph estimate represents the final estimate of the graph)
 - Testing estimate                     1 --> 2     (Testing estimate represents the final estimate of the graph using Algorithm 1. Note that five different outputs are possible) 
 - Families used              Gaussian;Gaussian     (first is the family used for X1 and the second is the family used for X2 (that is, family with the same support)
+
+In the case d=3, the output is in the following format:
+- $result                       Final score-based estimation of G; in particular, its adjacency matrix
+- $plausible                    List of all plausible graphs
+- $p_values                     p-values of the independence test between (hat{epsilon_1}, hat{epsilon_2}, hat{epsilon_3}) for all graphs
+- $p_values_adjusted            scores of all graphs using score=-log(p_values)+ lambda*(number of edges)
+
+In the case d>3, the output is the score-based estimation of G via greedy search: 
+- DAG in the format of bnlearn environment (see https://cran.r-project.org/web/packages/bnlearn/index.html)
 
 
 ## Example
