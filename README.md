@@ -32,9 +32,11 @@ For `family_of_distributions = 2`:
 If you want to use CPCM(F) model with given $F$, the choices for 'family_of_distributions' are the following: `Gaussian`, `Gaussian with fixed sigma`, `Pareto`, `Gamma`, `Gamma with fixed scale`, `Gumbel`, `Gumbel with fixed scale`, `Negative_binomial`, `Poisson`
 
 ### Rule of Thumb
+Good approach is to first try family1 and if all graphs are not plausible, use family2. However, if we do not want to compute everything twice, a good rule of thumb that works on the considered data is the following: 
 
 - Use `family_of_distributions = 1` if `n <= 1000`.
-- Use `family_of_distributions = 2` if `n > 1000`, but this choice should depend on the dataset complexity.
+- Use `family_of_distributions = 2` if `n > 1000`,
+  but again, this choice should depend on the dataset complexity.
 
 ### Output 
 In the bivariate case, the output is in the following format:
