@@ -27,6 +27,8 @@ library(stringr)
 library(EnvStats)
 library(dplyr)
 library(independence)
+library(copula)
+library(bnlearn)
 
 ##################################   Example   ###########################################
 #  n=500
@@ -40,275 +42,275 @@ library(independence)
 #  
 #  plot(X)
 ############################ CPCM estimation of the causal graph ##########################
-  
+
 
 CPCM_graph_estimate <- function(X, family_of_distributions = 1, force_estimate=FALSE){  
-    n = length(X[,1])
-    lambda = 2 #penalty for more edges
+  n = length(X[,1])
+  lambda = 2 #penalty for more edges
+  
+  
+  #Estimation \hat{S}
+  estimate_support_of_X_and_pair_a_family_for_X<-function(X, family_of_distributions = 1){
+    
+    determine_support <- function(X) {
+      
+      # Check if the data is discrete (integer values only)
+      if (all(X == floor(X)) & length(unique(X))< length(X)/10) {
+        return('discrete')  # Poisson distribution
+      }
+      
+      # Check if the data is within the interval [0, 1]
+      if (all(X >= 0 & X <= 1)) {
+        return('interval')  # Beta distribution
+      }
+      
+      # Check for Gamma distribution characteristics
+      if (all(X > 0)) {
+        # Check for skewness to differentiate from Gaussian
+        skewness <- mean((X - mean(X))^3) / (mean((X - mean(X))^2)^(3/2))
+        if (skewness > 0) {
+          return('half-line')  # Gamma distribution
+        }
+      }
+      
+      # If none of the above conditions are met, assume Gaussian
+      return('full support')  # Gaussian distribution
+    }
+    
+    if(family_of_distributions == 1){
+      if( determine_support(X)=='full support') return('Gaussian with fixed sigma')
+      if( determine_support(X)=='discrete') return('Poisson')
+      if( determine_support(X)=='interval') return('Gaussian with fixed sigma')
+      if( determine_support(X)=='half-line') return('Pareto')
+    }
+    
+    if(family_of_distributions == 2){
+      if( determine_support(X)=='full support') return('Gaussian')
+      if( determine_support(X)=='discrete') return('Negative_binomial')
+      if( determine_support(X)=='interval') return('Gaussian')
+      if( determine_support(X)=='half-line') return('Gamma')
+    }
     
     
-    #Estimation \hat{S}
-    estimate_support_of_X_and_pair_a_family_for_X<-function(X, family_of_distributions = 1){
-      
-      determine_support <- function(X) {
-        
-        # Check if the data is discrete (integer values only)
-        if (all(X == floor(X)) & length(unique(X))< length(X)/10) {
-          return('discrete')  # Poisson distribution
+  }
+  
+  #Estimation \hat{epsilon} using given F
+  estimate_epsilon<-function(Y, X, family="Gaussian"){ 
+    
+    ### ### ### ### ### ### ### ###
+    rename_columns_to_1_to_q <-function(X){ #Just making sure that our variables are called X1, X2, ...
+      if (is.null(nrow(X))) {X = as.data.frame(X); names(X)[1] <- "X1"; return(X) }
+      return(X %>% rename_with(~ str_c("X", seq_along(.))))
+    }
+    X = rename_columns_to_1_to_q(X)
+    names(Y)<- "Y"
+    ### ### ### ### ### ### ### ###
+    formula <- function(X, withY=TRUE){ #Definition of formula. We want to distinguish between discrete and continous variables for GAM. But anyway this function basically returns "Y~s(X1) + s(X2)+...+s(Xq)"
+      q = ncol(X); if (is.null(nrow(X))) {q=1} 
+      if(withY==TRUE){ form="Y ~ "}
+      if(withY==FALSE){form=" ~ "}
+      for (i in 1:q) {#Discrete variable is if it contains <=9 different values
+        if (  length(unique(X[,i]))>9  ) { 
+          form=paste(form, paste0("s(X", i,  ")+")) 
         }
-        
-        # Check if the data is within the interval [0, 1]
-        if (all(X >= 0 & X <= 1)) {
-          return('interval')  # Beta distribution
-        }
-        
-        # Check for Gamma distribution characteristics
-        if (all(X > 0)) {
-          # Check for skewness to differentiate from Gaussian
-          skewness <- mean((X - mean(X))^3) / (mean((X - mean(X))^2)^(3/2))
-          if (skewness > 0) {
-            return('half-line')  # Gamma distribution
-          }
-        }
-        
-        # If none of the above conditions are met, assume Gaussian
-        return('full support')  # Gaussian distribution
+        if (  length(unique(X[,i]))<=9  ) {  form=paste(form, paste0("as.factor(X", i,  ")+"))  }
       }
       
-      if(family_of_distributions == 1){
-        if( determine_support(X)=='full support') return('Gaussian with fixed sigma')
-        if( determine_support(X)=='discrete') return('Poisson')
-        if( determine_support(X)=='interval') return('Gaussian with fixed sigma')
-        if( determine_support(X)=='half-line') return('Pareto')
+      form=as.formula(  substr(form,1,nchar(form)-1)  )
+      return(form)
+    }
+    ### ### ### ### ### ### ### ### Here we start with the estimation of epsilons for each family separately.### ### ### ### ### ### ### ###
+    
+    
+    if (family=="Gaussian") {
+      
+      fit=  gam(list(formula(X, TRUE),formula(X, FALSE)), data.frame(Y,X) ,family=gaulss(), link=list("identity","logb"))
+      
+      residuals=c()
+      for (i in 1:length(Y)) {
+        residuals=c(residuals,  (Y[i] -fit$fitted.values[i,1])*(fit$fitted.values[i,2]) ) #fit$fitted.values[i,2]=1/sigma[i], fit$fitted.values[i,1]=mu[i]
       }
       
-      if(family_of_distributions == 2){
-        if( determine_support(X)=='full support') return('Gaussian')
-        if( determine_support(X)=='discrete') return('Negative_binomial')
-        if( determine_support(X)=='interval') return('Gaussian')
-        if( determine_support(X)=='half-line') return('Gamma')
+      
+      residuals=pnorm(residuals)
+      
+      return(residuals)
+    }
+    
+    if (family=="Gaussian with fixed sigma") {
+      
+      fit=  gam(list(formula(X, TRUE),~1), data.frame(Y,X) ,family=gaulss(), link=list("identity","logb"))
+      
+      residuals=c()
+      for (i in 1:length(Y)) {
+        residuals=c(residuals,  (Y[i] -fit$fitted.values[i,1])*(fit$fitted.values[i,2]) ) #fit$fitted.values[i,2]=1/sigma[i], fit$fitted.values[i,1]=mu[i]
       }
       
+      residuals=pnorm(residuals)
+      
+      
+      return(residuals)
+    }
+    
+    
+    
+    if (family=="Pareto") { # -log(log(Pareto) = gumbls
+      
+      Y=-log(log(Y))
+      fit=  gam(list(formula(X, TRUE), ~1), data.frame(Y,X) ,family=gumbls())
+      residuals=c()
+      for (i in 1:n) {
+        residuals=c(residuals,  pgumbel(Y[i], fit$fitted.values[i,1], 1)  )
+      }
+      
+      
+      return(residuals)
+      
+    }
+    if (family=="Gumbel") {
+      
+      fit=  gam(list(formula(X, TRUE), formula(X, FALSE)), data.frame(Y,X) ,family=gumbls())
+      residuals=c()
+      for (i in 1:n) {
+        residuals=c(residuals,  pgumbel(Y[i], fit$fitted.values[i,1], exp(fit$fitted.values[i,2]))  )
+      }
+      
+      return(residuals)
       
     }
     
-    #Estimation \hat{epsilon} using given F
-    estimate_epsilon<-function(Y, X, family="Gaussian"){ 
+    if (family=="Gumbel with fixed scale") {
       
-      ### ### ### ### ### ### ### ###
-      rename_columns_to_1_to_q <-function(X){ #Just making sure that our variables are called X1, X2, ...
-        if (is.null(nrow(X))) {X = as.data.frame(X); names(X)[1] <- "X1"; return(X) }
-        return(X %>% rename_with(~ str_c("X", seq_along(.))))
-      }
-      X = rename_columns_to_1_to_q(X)
-      names(Y)<- "Y"
-      ### ### ### ### ### ### ### ###
-      formula <- function(X, withY=TRUE){ #Definition of formula. We want to distinguish between discrete and continous variables for GAM. But anyway this function basically returns "Y~s(X1) + s(X2)+...+s(Xq)"
-        q = ncol(X); if (is.null(nrow(X))) {q=1} 
-        if(withY==TRUE){ form="Y ~ "}
-        if(withY==FALSE){form=" ~ "}
-        for (i in 1:q) {#Discrete variable is if it contains <=9 different values
-          if (  length(unique(X[,i]))>9  ) { 
-            form=paste(form, paste0("s(X", i,  ")+")) 
-          }
-          if (  length(unique(X[,i]))<=9  ) {  form=paste(form, paste0("as.factor(X", i,  ")+"))  }
-        }
-        
-        form=as.formula(  substr(form,1,nchar(form)-1)  )
-        return(form)
-      }
-      ### ### ### ### ### ### ### ### Here we start with the estimation of epsilons for each family separately.### ### ### ### ### ### ### ###
-      
-      
-      if (family=="Gaussian") {
-        
-        fit=  gam(list(formula(X, TRUE),formula(X, FALSE)), data.frame(Y,X) ,family=gaulss(), link=list("identity","logb"))
-        
-        residuals=c()
-        for (i in 1:length(Y)) {
-          residuals=c(residuals,  (Y[i] -fit$fitted.values[i,1])*(fit$fitted.values[i,2]) ) #fit$fitted.values[i,2]=1/sigma[i], fit$fitted.values[i,1]=mu[i]
-        }
-        
-        
-        residuals=pnorm(residuals)
-        
-        return(residuals)
+      fit=  gam(list(formula(X, TRUE), ~1), data.frame(Y,X) ,family=gumbls())
+      residuals=c()
+      for (i in 1:n) {
+        residuals=c(residuals,  pgumbel(Y[i], fit$fitted.values[i,1], exp(fit$fitted.values[i,2]))  )
       }
       
-      if (family=="Gaussian with fixed sigma") {
-        
-        fit=  gam(list(formula(X, TRUE),~1), data.frame(Y,X) ,family=gaulss(), link=list("identity","logb"))
-        
-        residuals=c()
-        for (i in 1:length(Y)) {
-          residuals=c(residuals,  (Y[i] -fit$fitted.values[i,1])*(fit$fitted.values[i,2]) ) #fit$fitted.values[i,2]=1/sigma[i], fit$fitted.values[i,1]=mu[i]
-        }
-        
-        residuals=pnorm(residuals)
-        
-        
-        return(residuals)
-      }
-      
-      
-      
-      if (family=="Pareto") { # -log(log(Pareto) = gumbls
-
-        Y=-log(log(Y))
-        fit=  gam(list(formula(X, TRUE), ~1), data.frame(Y,X) ,family=gumbls())
-        residuals=c()
-        for (i in 1:n) {
-          residuals=c(residuals,  pgumbel(Y[i], fit$fitted.values[i,1], 1)  )
-        }
-        
-        
-        return(residuals)
-        
-      }
-      if (family=="Gumbel") {
-        
-        fit=  gam(list(formula(X, TRUE), formula(X, FALSE)), data.frame(Y,X) ,family=gumbls())
-        residuals=c()
-        for (i in 1:n) {
-          residuals=c(residuals,  pgumbel(Y[i], fit$fitted.values[i,1], exp(fit$fitted.values[i,2]))  )
-        }
-        
-        return(residuals)
-        
-      }
-      
-      if (family=="Gumbel with fixed scale") {
-        
-        fit=  gam(list(formula(X, TRUE), ~1), data.frame(Y,X) ,family=gumbls())
-        residuals=c()
-        for (i in 1:n) {
-          residuals=c(residuals,  pgumbel(Y[i], fit$fitted.values[i,1], exp(fit$fitted.values[i,2]))  )
-        }
-        
-        return(residuals)
-        
-      }
-      
-      
-      
-      if (family=="Gamma") {
-        
-        fit=  gam(list(formula(X, TRUE),formula(X, FALSE)), data.frame(Y,X) ,family=gammals())
-        
-        residuals=c()
-        for (i in 1:length(Y)) {
-          residuals=c(residuals,  pgamma( Y[i], shape = 1/exp(fitted(fit)[i,2]), scale = fitted(fit)[i,1]*exp(fitted(fit)[i,2])   ) ) 
-        }
-        
-        return(residuals)
-        
-      }
-      
-      if (family=="Gamma with fixed scale") {
-        
-        fit=  gam(list(formula(X, TRUE),~1), data.frame(Y,X) ,family=gammals())
-        
-        residuals=c()
-        for (i in 1:length(Y)) {
-          residuals=c(residuals,  pgamma( Y[i], shape = 1/exp(fitted(fit)[i,2]), scale = fitted(fit)[i,1]*exp(fitted(fit)[i,2])   )) 
-        }
-        
-        
-        
-        return(residuals)
-        
-      }
-      
-      if (family=="Negative_binomial") {
-        
-        X= as.numeric(X[,1])
-        fit=  gam(Y~s(X), data.frame(Y, X) ,family=nb())
-        
-        residuals=c()
-        for (i in 1:length(Y)) {
-          residuals=c(residuals,  pnbinom(Y[i], mu =fitted(fit)[i],size =fit$family$getTheta(TRUE)   )  ) 
-        }
-        
-        return(residuals)
-        
-      }
-      
-      if (family=="Poisson") {
-        
-        fit <- gam(formula(X, TRUE), data.frame(Y,X) ,family=poisson())
-        
-        residuals=c()
-        for (i in 1:length(Y)) {
-          residuals=c(residuals,  ppois(Y[i], lambda = fitted(fit)[i])  ) 
-        }
-        
-        
-        return(residuals)
-        
-      }
-      
-      
-      
-      return(  "Family not implemented, sorry.")
+      return(residuals)
       
     }
     
     
     
+    if (family=="Gamma") {
+      
+      fit=  gam(list(formula(X, TRUE),formula(X, FALSE)), data.frame(Y,X) ,family=gammals())
+      
+      residuals=c()
+      for (i in 1:length(Y)) {
+        residuals=c(residuals,  pgamma( Y[i], shape = 1/exp(fitted(fit)[i,2]), scale = fitted(fit)[i,1]*exp(fitted(fit)[i,2])   ) ) 
+      }
+      
+      return(residuals)
+      
+    }
     
+    if (family=="Gamma with fixed scale") {
+      
+      fit=  gam(list(formula(X, TRUE),~1), data.frame(Y,X) ,family=gammals())
+      
+      residuals=c()
+      for (i in 1:length(Y)) {
+        residuals=c(residuals,  pgamma( Y[i], shape = 1/exp(fitted(fit)[i,2]), scale = fitted(fit)[i,1]*exp(fitted(fit)[i,2])   )) 
+      }
+      
+      
+      
+      return(residuals)
+      
+    }
+    
+    if (family=="Negative_binomial") {
+      
+      X= as.numeric(X[,1])
+      fit=  gam(Y~s(X), data.frame(Y, X) ,family=nb())
+      
+      residuals=c()
+      for (i in 1:length(Y)) {
+        residuals=c(residuals,  pnbinom(Y[i], mu =fitted(fit)[i],size =fit$family$getTheta(TRUE)   )  ) 
+      }
+      
+      return(residuals)
+      
+    }
+    
+    if (family=="Poisson") {
+      
+      fit <- gam(formula(X, TRUE), data.frame(Y,X) ,family=poisson())
+      
+      residuals=c()
+      for (i in 1:length(Y)) {
+        residuals=c(residuals,  ppois(Y[i], lambda = fitted(fit)[i])  ) 
+      }
+      
+      
+      return(residuals)
+      
+    }
+    
+    
+    
+    return(  "Family not implemented, sorry.")
+    
+  }
+  
+  
+  
+  
   bivariate_CPCM_graph_estimate <- function(X, family_of_distributions = 1, force_estimate=FALSE){
-
-      #Are X1 and X2 idependent? If yes, we return an empty graph as an estimate
-      X1 = X[,1]; X2 = X[,2]
-      
-      if(force_estimate==FALSE){
+    
+    #Are X1 and X2 idependent? If yes, we return an empty graph as an estimate
+    X1 = X[,1]; X2 = X[,2]
+    
+    if(force_estimate==FALSE){
       if (n>500 &   all(X1 == floor(X1))==FALSE & all(X2 == floor(X2))==FALSE )
-        { indep = hoeffding.D.test(X1, X2, na.rm = TRUE, collisions = FALSE, precision = 1e-05) }else{ indep=dhsic.test(data.frame(X1, X2))}
-        
+      { indep = hoeffding.D.test(as.numeric(X1), as.numeric(X2), na.rm = TRUE, collisions = FALSE, precision = 1e-05) }else{ indep=dhsic.test(data.frame(X1, X2))}
+      
       if(indep$p.value>=0.05) {res =  as.data.frame(c("-", "-", "Empty graph", "Empty graph"));     
       colnames(res)<-c("Causal results (p-values)");    
       rownames(res)<-c("p-value 1-->2", "p-value 2-->1", "Score-based graph estimate", 'Testing estimate')
       }}
-      
-
-      #X1-->X2 direction
-      Y = X2; X=data.frame(X1 = X1)
-      if(family_of_distributions == 1 || family_of_distributions==2)
-        {family2 = estimate_support_of_X_and_pair_a_family_for_X(Y, family_of_distributions = family_of_distributions)}else{family2 = family_of_distributions}
-      r2=as.numeric(estimate_epsilon(Y, X, family = family2))
-      
-      #X2-->X1 direction
-      Y= X1; X=data.frame(X1 = X2)
-      if(family_of_distributions == 1 || family_of_distributions==2)
-      {family1 = estimate_support_of_X_and_pair_a_family_for_X(Y, family_of_distributions = family_of_distributions)}else{family1 = family_of_distributions}
-      r1= as.numeric(estimate_epsilon(Y, X, family = family1))
-      
-      #Which independence test should we choose? hoeffding.D.test or dhsic.test? hoeffding.D.test does not work well for discrete variables, but is faster
-      if(family1 !='Poisson' & family1 !='Negative_binomial' &family2 !='Poisson' & family2 !='Negative_binomial' ){ 
-        z1=hoeffding.D.test(r2, X1, na.rm = TRUE,  precision = 1e-05)$p.value
-        z2=hoeffding.D.test(r1, X2, na.rm = TRUE,  precision = 1e-05)$p.value}else{
-          z1=dhsic.test(data.frame(r2, X1))$p.value
-          z2=dhsic.test(data.frame(r1, X2))$p.value
-        }
-      
-      
-      #Results written in a nice way
-      if (z1>=z2) res1="1 --> 2"   #Note that we do not compare it with an empty graph - we just return empty graph if and only if we do not reject H_0: X indep Y
-      if (z1<z2)  res1="2 --> 1"
-      
-      res2=res1
-      if(z1>0.05 & z2>0.05) res2="Unidentifiable  (both directions are plausible)" 
-      if (z1<0.05 & z2<0.05) res2 = "Assumptions not fulfilled (both directions are not plausible)"
-      
-      res=as.data.frame(c( round(z1, digits=6), round(z2, digits = 6), res1, res2, paste0(family1, ";", family2)))
-      colnames(res)<-c("Results")
-      rownames(res)<-c("p-value 1-->2", "p-value 2-->1", "Score-based graph estimate", 'Testing estimate', 'Families used' )
-      return(res)
-    }
     
     
+    #X1-->X2 direction
+    Y = X2; X_=data.frame(X1 = X1)
+    if(family_of_distributions == 1 || family_of_distributions==2)
+    {family2 = estimate_support_of_X_and_pair_a_family_for_X(Y, family_of_distributions = family_of_distributions)}else{family2 = family_of_distributions}
+    r2=as.numeric(estimate_epsilon(Y, X_, family = family2))
+    
+    #X2-->X1 direction
+    Y= X1; X_=data.frame(X1 = X2)
+    if(family_of_distributions == 1 || family_of_distributions==2)
+    {family1 = estimate_support_of_X_and_pair_a_family_for_X(Y, family_of_distributions = family_of_distributions)}else{family1 = family_of_distributions}
+    r1= as.numeric(estimate_epsilon(Y, X_, family = family1))
+    
+    #Which independence test should we choose? hoeffding.D.test or dhsic.test? hoeffding.D.test does not work well for discrete variables, but is faster
+    if(family1 !='Poisson' & family1 !='Negative_binomial' &family2 !='Poisson' & family2 !='Negative_binomial' ){ 
+      z1=hoeffding.D.test(r2, as.numeric(X1), na.rm = TRUE,  precision = 1e-05)$p.value
+      z2=hoeffding.D.test(r1, as.numeric(X2), na.rm = TRUE,  precision = 1e-05)$p.value}else{
+        z1=dhsic.test(data.frame(r2, X1))$p.value
+        z2=dhsic.test(data.frame(r1, X2))$p.value
+      }
+    
+    
+    #Results written in a nice way
+    if (z1>=z2) res1="1 --> 2"   #Note that we do not compare it with an empty graph - we just return empty graph if and only if we do not reject H_0: X indep Y
+    if (z1<z2)  res1="2 --> 1"
+    
+    res2=res1
+    if(z1>0.05 & z2>0.05) res2="Unidentifiable  (both directions are plausible)" 
+    if (z1<0.05 & z2<0.05) res2 = "Assumptions not fulfilled (both directions are not plausible)"
+    
+    res=as.data.frame(c( round(z1, digits=6), round(z2, digits = 6), res1, res2, paste0(family1, ";", family2)))
+    colnames(res)<-c("Results")
+    rownames(res)<-c("p-value 1-->2", "p-value 2-->1", "Score-based graph estimate", 'Testing estimate', 'Families used' )
+    return(res)
+  }
   
-  trivariate_CPCM_graph_estimate <- function(X, family_of_distributions = 1){
+  
+  
+  trivariate_exact_CPCM_graph_estimate <- function(X, family_of_distributions = 1){
     showing_computing_time=TRUE #Change to FALSE if annoyed by showing the remaining time when computing
     accuracy = 0.0025 #multIndepTest requires accuracy of the computed p_value
     
@@ -374,9 +376,9 @@ CPCM_graph_estimate <- function(X, family_of_distributions = 1, force_estimate=F
     if (ncol(X)==3) {
       X1 = X[,1]; X2 = X[,2]; X3 = X[,3]
       
-
       
-
+      
+      
       if(family_of_distributions == 1 || family_of_distributions==2)
       {family1 = estimate_support_of_X_and_pair_a_family_for_X(X1, family_of_distributions = family_of_distributions)
       family2 = estimate_support_of_X_and_pair_a_family_for_X(X2, family_of_distributions = family_of_distributions)
@@ -429,61 +431,99 @@ CPCM_graph_estimate <- function(X, family_of_distributions = 1, force_estimate=F
       return(list(plausible=M_plausible, p_values=p_values, p_values_adjusted=p_values_adjusted, result=M_best))
       
     }
-
+    
   }
   
-
+  
+  greedy_CPCM_graph_estimate <- function(X, family_of_distributions = 1, quiet = FALSE) {
+    
+    
+    CPCM_score_function <- function(X, dag) {
+      
+      epsilon = X
+      nodes <- colnames(X)
+      d = length(nodes)
+      for (i in 1:d) {
+        node <- nodes[i]
+        parents <- parents(dag, node)
+        if (length(parents) > 0) {
+          if(family_of_distributions==1 || family_of_distributions ==2){family_for_Y = estimate_support_of_X_and_pair_a_family_for_X(X[, node], family_of_distributions)}else{family_for_Y = family_of_distributions}
+          e = estimate_epsilon(Y = X[, node], X = data.frame(X[, parents]), family = family_for_Y)
+          epsilon[, node] <- e
+        }
+      }
+      
+      p_value =  multIndepTest(epsilon,d=rep(1, length(nodes)), verbose = FALSE, N=101)$fisher.pvalue
+      return(-log(p_value) + lambda*nrow(arcs(dag)) )  # Score based on number of edges (simplistic example)
+    }
+    
+    # Function to check if an arc exists in a DAG
+    arc_exists <- function(dag, from, to) {
+      arcs_list <- arcs(dag)
+      return(any(arcs_list[, 1] == from & arcs_list[, 2] == to))
+    }
+    
+    score_function = CPCM_score_function
+    #stupid_score_function <- function(X, dag) {return(-length(arcs(dag)))}
+    nodes <- colnames(X)
+    current_dag <- empty.graph(nodes)
+    best_score <- score_function(X, current_dag)
+    if(quiet == FALSE){cat('Score = ', best_score, 'DAG = Empty', '\n')}
+    
+    improved <- TRUE
+    while (improved) {
+      improved <- FALSE
+      candidate_dags <- list()
+      candidate_scores <- numeric()
+      
+      # Generate candidate DAGs by adding/removing edges
+      for (i in 1:length(nodes)) {
+        for (j in 1:length(nodes)) {
+          if (i != j) {
+            new_dag <- current_dag
+            
+            if (!arc_exists(new_dag, nodes[i], nodes[j])) {
+              temp_dag <- tryCatch(
+                set.arc(new_dag, nodes[i], nodes[j], check.cycles = TRUE),
+                error = function(e) NULL  # Skip invalid arcs
+              )
+              if (is.null(temp_dag)) next  # Skip if cycle is created
+              new_dag <- temp_dag
+            } else {
+              new_dag <- drop.arc(new_dag, nodes[i], nodes[j])  # Remove edge
+            }
+            
+            new_score <- score_function(X, new_dag)
+            candidate_dags <- append(candidate_dags, list(new_dag))
+            candidate_scores <- c(candidate_scores, new_score)
+            if(quiet == FALSE){cat('Score = ', new_score, 'DAG = ', new_dag$arcs, '\n')}
+          }
+        }
+      }
+      
+      # Select the DAG with the lowest score
+      if (length(candidate_scores) > 0 && min(candidate_scores) < best_score) {
+        best_index <- which.min(candidate_scores)
+        current_dag <- candidate_dags[[best_index]]
+        best_score <- candidate_scores[best_index]
+        improved <- TRUE
+      }
+    }
+    
+    return(current_dag)
+  }
+  
+  
+  
   if(ncol(X)==2) return(bivariate_CPCM_graph_estimate(X, family_of_distributions=family_of_distributions, force_estimate = force_estimate))
-  if(ncol(X)==3) return(trivariate_CPCM_graph_estimate(X, family_of_distributions=family_of_distributions))
-  
-  if (ncol(X)!=2 && ncol(X)!=3) {
-    return("Sorry, the code is avaliable only for d<=3 for now")
-  }
-  
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+  if(ncol(X)==3) return(trivariate_exact_CPCM_graph_estimate(X, family_of_distributions=family_of_distributions))
+  if(ncol(X)>3) return(greedy_CPCM_graph_estimate(X, family_of_distributions=family_of_distributions, quiet = TRUE))
 
   }  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
+
+
+
+
+
+
+
