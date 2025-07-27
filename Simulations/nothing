@@ -44,7 +44,7 @@ plot(X)
 ############################ CPCM estimation of the causal graph ##########################
 
 
-CPCM_graph_estimate <- function(X, family_of_distributions = 1){  
+CPCM_graph_estimate <- function(X, family_of_distributions = 1, DAG_method = 'RESIT'){  
   n = length(X[,1])
   lambda = 2 #penalty for more edges
   
@@ -235,7 +235,7 @@ CPCM_graph_estimate <- function(X, family_of_distributions = 1){
     rownames(res)<-c("p-value Empty graph", "p-value 1-->2", "p-value 2-->1", "Score-based graph estimate", 'Testing estimate', 'Forced estimate', 'Families used' )
     return(res)}
   
-
+  
   bivariate_CPCM_graph_estimate <- function(X, family_of_distributions = 1){
     
     #Are X1 and X2 idependent? If yes, we return an empty graph as an estimate
@@ -260,14 +260,12 @@ CPCM_graph_estimate <- function(X, family_of_distributions = 1){
     z2=dhsic.test(data.frame(r1, X2), method = 'gamma')$p.value
     
     
-   
+    
     return(create_bivariate_output_from_p_values(indep, z1, z2, family1, family2))
   }
   
   
-  
   trivariate_exact_CPCM_graph_estimate <- function(X, family_of_distributions = 1){
-    showing_computing_time=TRUE #Change to FALSE if annoyed by showing the remaining time when computing
     
     make_all_dags_on_three_nodes <-function(){#I am sorry about this monstrosity. Thanks chatGPT for generating it, it was easier
       all_dags = list()
@@ -364,13 +362,11 @@ CPCM_graph_estimate <- function(X, family_of_distributions = 1){
       p_values = c(); p_values_adjusted = c()
       k = length(all_dags)
       for (i in 1:length(all_dags)) {
-        if(showing_computing_time==TRUE){cat("Time remaining:",k, "\n"); k=k-1}
         dag = all_dags[[i]]
         p_value =  dhsic.test(data.frame(A[from_matrix_to_values(1,dag)], 
                                          B[from_matrix_to_values(2, dag)], 
                                          C[from_matrix_to_values(3, dag)]) , 
                               method = 'gamma')$p.value
-        if(p_value<=accuracy){p_value = 0}
         p_values = c(p_values,  p_value)
         p_values_adjusted = c(p_values_adjusted, -log(p_value) + lambda*sum(dag))
       }
@@ -469,6 +465,130 @@ CPCM_graph_estimate <- function(X, family_of_distributions = 1){
   }
   
   
+  RESIT_CPCM_graph_estimate <- function(X, family_of_distributions = 1, quiet = TRUE) {
+    nodes <- colnames(X)
+    d <- ncol(X)
+    ordering <- c()
+    remaining_nodes <- nodes
+    
+    multi_dhsic = function(epsilon, X_parents){
+      min_p_val <- 1
+      for (pj in colnames(X_parents)) {
+        p_test <- dhsic.test(data.frame(epsilon, X_parents[[pj]]), method = "gamma")$p.value
+        min_p_val <- min(min_p_val, p_test)
+      }
+      return(min_p_val)
+    }
+    ### === Phase 1: ordering === ###
+    
+    # Initialize adjacency matrix
+    adj_mat <- matrix(0, nrow = d, ncol = d)
+    colnames(adj_mat) <- rownames(adj_mat) <- nodes
+    
+    while (length(remaining_nodes) > 0) {
+      p_vals <- c()
+      
+      for (target in remaining_nodes) {
+        predictors <- setdiff(remaining_nodes, target)
+        
+        if (length(predictors) == 0) {
+          p_vals[target] <- 1  # No parents -> independent
+          next
+        }
+        
+        Y <- X[, target]
+        X_parents <- X[, predictors, drop = FALSE]
+        
+        # Estimate residuals
+        if (family_of_distributions == 1 || family_of_distributions == 2) {
+          fam <- estimate_support_of_X_and_pair_a_family_for_X(Y, family_of_distributions)
+        } else {
+          fam <- family_of_distributions
+        }
+        epsilon <- estimate_epsilon(Y = Y, X = X_parents, family = fam)
+        p_vals[target] <- multi_dhsic(epsilon, X_parents)
+      }
+      
+      # Choose most independent node (largest p-value)
+      chosen <- names(which.max(p_vals))
+      if (quiet == FALSE) cat("Removing:", chosen, "| p-value:", p_vals[chosen], "\n")
+      
+      ordering <- c(chosen, ordering)
+      remaining_nodes <- setdiff(remaining_nodes, chosen)
+    }
+    
+    
+    
+    
+    ### === Phase 2: build DAG with pruning === ###
+    dag <- empty.graph(nodes)
+    
+    for (i in seq_along(ordering)) {
+      node <- ordering[i]
+      Y <- X[, node]
+      if (family_of_distributions == 1 || family_of_distributions == 2) {
+        fam <- estimate_support_of_X_and_pair_a_family_for_X(Y, family_of_distributions)
+      } else {
+        fam <- family_of_distributions
+      }
+      
+      parents <- if (i == 1) character(0) else ordering[1:(i - 1)]
+      
+      for (p in parents) {
+        other_parents <- setdiff(parents, p)
+        
+        if (length(other_parents) == 0){ 
+          test_df <- data.frame(Y, X[, p])
+          p_val <- dhsic.test(test_df, method = "gamma")$p.value
+        }else{
+          X_parents = X[, parents, drop = FALSE]
+          X_other = X[, other_parents, drop = FALSE]
+          epsilon <- estimate_epsilon(Y = Y, X = X_other, family = fam)
+          p_val <- multi_dhsic(epsilon, X_other)
+        }
+        
+        if (p_val < 0.05) {
+          dag <- set.arc(dag, from = p, to = node)
+        } else if (!quiet) {
+          cat("Pruned edge:", p, "→", node, "| p =", round(p_val, 4), "\n")
+        }}
+    }
+    
+    return(dag)
+  }
+  
+  
+  
+  test_residual_independence <- function(X, dag, family_of_distributions = 1) {
+    nodes <- colnames(X)
+    d <- ncol(X)
+    residual_matrix <- X  # initialize
+    
+    for (i in seq_along(nodes)) {
+      node <- nodes[i]
+      parents_i <- parents(dag, node)
+      
+      if (length(parents_i) == 0) {
+        residual_matrix[, node] <- X[, node]  # No parents → leave as is
+      } else {
+        Y <- X[, node]
+        X_parents <- X[, parents_i, drop = FALSE]
+        
+        if (family_of_distributions == 1 || family_of_distributions == 2) {
+          fam <- estimate_support_of_X_and_pair_a_family_for_X(Y, family_of_distributions)
+        } else {
+          fam <- family_of_distributions
+        }
+        residual_matrix[, node] <- estimate_epsilon(Y = Y, X = X_parents, family = fam)
+      }
+    }
+    
+    # Final joint independence test
+    dhsic.test(as.data.frame(residual_matrix), method = "gamma")$p.value
+  }
+  
+  
+
   
   if(ncol(X)==2) {
     if(family_of_distributions!='Sequential choice'){
@@ -479,36 +599,86 @@ CPCM_graph_estimate <- function(X, family_of_distributions = 1){
       
       result1 = bivariate_CPCM_graph_estimate(X, family_of_distributions = 1)
       if(max(result1[[1]][1:3])>alpha_level){return(result1)}else{
-      result2 = bivariate_CPCM_graph_estimate(X, family_of_distributions = 2)
-      if(max(result2[[1]][1:3])>alpha_level){return(result2)}else{
-      result3 = result2
-      result3[[1]][1] = max(result1[[1]][1], result2[[1]][1])
-      result3[[1]][2] = max(result1[[1]][2], result2[[1]][2])
-      result3[[1]][3] = max(result1[[1]][3], result2[[1]][3])
-    
-      family1 = sub(";.*", "", result2[[1]][7])
-      family2 = sub(".*?;", "", result2[[1]][7])
-      if(result1[[1]][2]>result2[[1]][2]){family1 = sub(";.*", "", result1[[1]][7])}
-      if(result1[[1]][3]>result2[[1]][3]){family2 = sub(".*?;", "", result1[[1]][7])}
+        result2 = bivariate_CPCM_graph_estimate(X, family_of_distributions = 2)
+        if(max(result2[[1]][1:3])>alpha_level){return(result2)}else{
+          result3 = result2
+          result3[[1]][1] = max(result1[[1]][1], result2[[1]][1])
+          result3[[1]][2] = max(result1[[1]][2], result2[[1]][2])
+          result3[[1]][3] = max(result1[[1]][3], result2[[1]][3])
+          
+          family1 = sub(";.*", "", result2[[1]][7])
+          family2 = sub(".*?;", "", result2[[1]][7])
+          if(result1[[1]][2]>result2[[1]][2]){family1 = sub(";.*", "", result1[[1]][7])}
+          if(result1[[1]][3]>result2[[1]][3]){family2 = sub(".*?;", "", result1[[1]][7])}
+          
+          result=create_bivariate_output_from_p_values(as.numeric(result3[[1]][1]), 
+                                                       as.numeric(result3[[1]][2]), 
+                                                       as.numeric(result3[[1]][3]),
+                                                       family1, family2)
+          return(result)
+        }
+      }
+    } 
+  }
+  if(DAG_method=='exact'& ncol(X)==3) {
+    if(family_of_distributions!='Sequential choice'){ return(trivariate_exact_CPCM_graph_estimate(X, family_of_distributions=family_of_distributions))}
+    if(family_of_distributions=='Sequential choice'){
+      alpha_level = 0.01
       
-      result=create_bivariate_output_from_p_values(as.numeric(result3[[1]][1]), 
-                                         as.numeric(result3[[1]][2]), 
-                                         as.numeric(result3[[1]][3]),
-                                         family1, family2)
-        return(result)
+      result1 = trivariate_exact_CPCM_graph_estimate(X, family_of_distributions = 1)
+      if(max(result1$p_values)>alpha_level){result1$family = 1; return(result1)}else{
+        result2 = trivariate_exact_CPCM_graph_estimate(X, family_of_distributions = 2)
+        if(max(result2$p_values)>alpha_level){result1$family = 2; return(result2)}else{
+          result3 = result2
+          result3$p_values = pmax(result1$p_values, result2$p_values)
+          result3$p_values_adjusted = pmin(result1$p_values_adjusted, result2$p_values_adjusted)
+          
+          result3$result = if (max(result1$p_values) > max(result2$p_values)) {
+            result1$result
+          } else {
+            result2$result
+          }
+          return(result3)
+        }
       }
     }
-  } 
+  }  
+  if(DAG_method=='exact'& ncol(X)!=3){
+    cat("Warning: Exact estimation is not implemented for d!=3. If d>=4, using RESIT estimation instead.\n")
+    DAG_method = 'RESIT'
+  }
+  
+  if(DAG_method=='RESIT'& ncol(X)>2) {
+    if(family_of_distributions!='Sequential choice'){ return(RESIT_CPCM_graph_estimate(X, family_of_distributions=family_of_distributions))}
+    if(family_of_distributions=='Sequential choice'){
+      alpha_level = 0.01
+      result1 = RESIT_CPCM_graph_estimate(X, family_of_distributions = 1)
+      plausibility1 = test_residual_independence(X, result1, family_of_distributions = 1)
+      cat('Plausibility for family1:', plausibility1, '\n')
+      if(plausibility1>= alpha_level) {return(result1)}else{
+        result2 = RESIT_CPCM_graph_estimate(X, family_of_distributions = 2)
+          return(result2)
+        }
+      }
+  }
+    
+
+  
+  if(DAG_method=='greedy'& ncol(X)>2) {
+    if(family_of_distributions!='Sequential choice'){ return(greedy_CPCM_graph_estimate(X, family_of_distributions=family_of_distributions))}
+    if(family_of_distributions=='Sequential choice'){
+      alpha_level = 0.01
+      
+      result1 = greedy_CPCM_graph_estimate(X, family_of_distributions = 1)
+      plausibility1 = test_residual_independence(X, result1, family_of_distributions = 1)
+      cat('Plausibility for family1:', plausibility1, '\n')
+      if(plausibility1>= alpha_level) {return(result1)}else{
+        result2 = greedy_CPCM_graph_estimate(X, family_of_distributions = 2)
+        return(result2)
+      }
+    }
+  }        
 }
-if(ncol(X)==3) return(trivariate_exact_CPCM_graph_estimate(X, family_of_distributions=family_of_distributions))
-if(ncol(X)>3) return(greedy_CPCM_graph_estimate(X, family_of_distributions=family_of_distributions, quiet = TRUE))
 
-}  
-
-
-
-
-
-
-
-
+  
+  
