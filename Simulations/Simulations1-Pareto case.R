@@ -1,5 +1,5 @@
 #####################     Simulations 6.1    ################################
-#Running the code below, you can recreate the three graphs from Section 6.1.
+#Running the code below, you can recreate the results and graphs from Section 6.1.
 #You need to first upload the function 'CPCM_graph_estimate', that is located in the main file
 #Lines 1-200 contain the simulations for the first plot
 #Lines 200-300 contain the simulations for the second plot
@@ -8,7 +8,7 @@
 library(ggplot2)
 library(ggpattern)
 library(gridExtra)
-library(Pareto) #Or other package to generate Pareto random variables
+library(EnvStats) #only for rpareto()
 
 
 
@@ -36,7 +36,7 @@ generate_our_data <- function(n = 1000, alpha) {
   Y <- numeric(n)
   for (i in 1:n) {
     theta <- X[i]^alpha * log(X[i]) + 2
-    y <- rPareto(1, 1, theta)
+    y <- rpareto(1, 1, theta)
     Y[i] <- y
   }
   
@@ -44,7 +44,7 @@ generate_our_data <- function(n = 1000, alpha) {
 }
 
 # Example of usage:
-X = generate_our_data(n=500, alpha)
+X = generate_our_data(n=500, alpha=0)
 plot(X)
 CPCM_graph_estimate(X, family_of_distributions = 'Pareto') 
 
@@ -203,179 +203,178 @@ ggplot(data, aes(x = Category, y = Percentage, fill = Segment)) +
 number_of_repetitions = 100
 
 alpha = 0
-  result1 = c()
-  result2 = c()
-  
+result1 = c()
+result2 = c()
+
+for (i in 1:number_of_repetitions) {
+  X = generate_our_data(n=500, alpha)
+  graph = CPCM_graph_estimate(X, family_of_distributions = "Pareto")
+  result1 = c(result1, graph[1,])
+  result2 = c(result2, graph[2,])
+  cat("Time remaining: ", number_of_repetitions-i, "\n")
+}
+
+
+number_of_repetitions = 100
+
+alpha = 2
+result3 = c()
+result4 = c()
+
+for (i in 1:number_of_repetitions) {
+  X = generate_our_data(n=500, alpha)
+  graph = CPCM_graph_estimate(X, family_of_distributions = "Pareto")
+  result3 = c(result3, graph[1,])
+  result4 = c(result4, graph[2,])
+  cat("Time remaining: ", number_of_repetitions-i, "\n")
+}
+
+
+
+result1 = result2[result1!='-']
+result2 = result2[result2!='-']
+
+
+result1=as.numeric(result1)
+result2=as.numeric(result2)
+result3=as.numeric(result3)
+result4=as.numeric(result4)
+
+
+
+
+
+binwidth=0.1
+
+# Create the first pair of overlapping histograms
+plot1 <- ggplot() +
+  geom_histogram(aes(x = result1), binwidth = binwidth, fill = "blue", alpha = 0.2) +
+  geom_histogram(aes(x = result2), binwidth = binwidth, fill = "red", alpha = 0.2) +
+  labs(title = "Overlapping Histograms 1", x = "p-value", y = "Frequency") +  
+  theme_minimal()
+
+# Create the second pair of overlapping histograms
+plot2 <- ggplot() +
+  geom_histogram(aes(x = result3), binwidth = binwidth, fill = "green", alpha = 0.2) +
+  geom_histogram(aes(x = result4), binwidth = binwidth, fill = "purple", alpha = 0.2) +
+  labs(title = "Overlapping Histograms 2", x = "Value", y = "Frequency") +
+  theme_minimal()
+
+# Arrange the plots vertically
+grid.arrange(plot1, plot2, ncol = 1)
+
+
+
+
+
+# Combine data into data frames
+df1 <- data.frame(value = c(result1, result2), direction = c(rep("X -> Y", 100), rep("Y -> X", 100)))
+df2 <- data.frame(value = c(result3, result4), direction = c(rep("X -> Y", 100), rep("Y -> X", 100)))
+
+binwidth <- 0.1
+
+# Create the first pair of overlapping histograms with density lines
+plot1 <- ggplot(df1, aes(x = value, fill = direction)) +
+  geom_histogram(position = "identity", alpha = 0.1, binwidth = binwidth) +
+  labs(title = "P-value distribution: case alpha = 0", x = "p-value", y = "Frequency") +
+  scale_fill_manual(values = c("X -> Y" = "blue", "Y -> X" = "red")) +
+  scale_color_manual(values = c("X -> Y" = "blue", "Y -> X" = "red")) +
+  theme_minimal() +
+  theme(legend.position = "top")
+
+# Create the second pair of overlapping histograms with density lines
+plot2 <- ggplot(df2, aes(x = value, fill = direction)) +
+  geom_histogram(position = "identity", alpha = 0.3, binwidth = binwidth) +
+  labs(title = "P-value distribution: case alpha = 2", x = "p-value", y = "Frequency") +
+  scale_fill_manual(values = c("X -> Y" = "green", "Y -> X" = "purple")) +
+  scale_color_manual(values = c("X -> Y" = "green", "Y -> X" = "purple")) +
+  theme_minimal() +
+  theme(legend.position = "top")
+
+# Arrange the plots vertically
+grid.arrange(plot1, plot2, ncol = 1)
+
+
+
+
+
+
+######Graph number three
+sample_sizes = c(50, 100,200,  300, 400, 500, 600, 800, 1000)
+number_of_repetitions = 200
+
+stupid_transmission <- function(x){ #return 1 if 1-->2, return 0 if 2-->1
+  if(x=="Empty graph")return(0)else{return(2-as.numeric(substr(x[1],1,1)))}
+}
+
+alpha = 1
+final_result = c()
+for (n in sample_sizes) {
+  result = c()
   for (i in 1:number_of_repetitions) {
-    X = generate_our_data(n=500, alpha)
+    X = generate_our_data(n=n, alpha)
     graph = CPCM_graph_estimate(X, family_of_distributions = "Pareto")
-    result1 = c(result1, graph[1,])
-    result2 = c(result2, graph[2,])
-    cat("Time remaining: ", number_of_repetitions-i, "\n")
+    result = c(result, graph[3,])
+    cat("Time remaining: n = ", n, '  and  number_of_repetitions = ', number_of_repetitions-i, "\n")
   }
   
+  final_result = cbind(final_result, result)
   
-  number_of_repetitions = 100
-  
-  alpha = 2
-  result3 = c()
-  result4 = c()
-  
+}
+
+
+
+results_1 = rep(0, length(final_result[1,]))
+for (j in 1:length(final_result[1,])) {
+  for (i in 1:length(final_result[,1])) {
+    results_1[j] = results_1[j]+stupid_transmission(final_result[i,j])}
+  results_1[j] = results_1[j]/length(final_result[,1])
+}
+
+
+
+alpha = 2 
+final_result = c()
+for (n in sample_sizes) {
+  result = c()
   for (i in 1:number_of_repetitions) {
-    X = generate_our_data(n=500, alpha)
+    X = generate_our_data(n=n, alpha)
     graph = CPCM_graph_estimate(X, family_of_distributions = "Pareto")
-    result3 = c(result3, graph[1,])
-    result4 = c(result4, graph[2,])
-    cat("Time remaining: ", number_of_repetitions-i, "\n")
-  }
-
-
-   
-   result1 = result2[result1!='-']
-   result2 = result2[result2!='-']
-   
-   
-   result1=as.numeric(result1)
-   result2=as.numeric(result2)
-   result3=as.numeric(result3)
-   result4=as.numeric(result4)
-   
-   
-
-  
-  
-   binwidth=0.1
-   
-  # Create the first pair of overlapping histograms
-  plot1 <- ggplot() +
-    geom_histogram(aes(x = result1), binwidth = binwidth, fill = "blue", alpha = 0.2) +
-    geom_histogram(aes(x = result2), binwidth = binwidth, fill = "red", alpha = 0.2) +
-    labs(title = "Overlapping Histograms 1", x = "p-value", y = "Frequency") +  
-    theme_minimal()
-  
-  # Create the second pair of overlapping histograms
-  plot2 <- ggplot() +
-    geom_histogram(aes(x = result3), binwidth = binwidth, fill = "green", alpha = 0.2) +
-    geom_histogram(aes(x = result4), binwidth = binwidth, fill = "purple", alpha = 0.2) +
-    labs(title = "Overlapping Histograms 2", x = "Value", y = "Frequency") +
-    theme_minimal()
-  
-  # Arrange the plots vertically
-  grid.arrange(plot1, plot2, ncol = 1)
-  
-
-  
-  
-  
-  # Combine data into data frames
-  df1 <- data.frame(value = c(result1, result2), direction = c(rep("X -> Y", 100), rep("Y -> X", 100)))
-  df2 <- data.frame(value = c(result3, result4), direction = c(rep("X -> Y", 100), rep("Y -> X", 100)))
-  
-  binwidth <- 0.1
-  
-  # Create the first pair of overlapping histograms with density lines
-  plot1 <- ggplot(df1, aes(x = value, fill = direction)) +
-    geom_histogram(position = "identity", alpha = 0.1, binwidth = binwidth) +
-    labs(title = "P-value distribution: case alpha = 0", x = "p-value", y = "Frequency") +
-    scale_fill_manual(values = c("X -> Y" = "blue", "Y -> X" = "red")) +
-    scale_color_manual(values = c("X -> Y" = "blue", "Y -> X" = "red")) +
-    theme_minimal() +
-    theme(legend.position = "top")
-  
-  # Create the second pair of overlapping histograms with density lines
-  plot2 <- ggplot(df2, aes(x = value, fill = direction)) +
-    geom_histogram(position = "identity", alpha = 0.3, binwidth = binwidth) +
-    labs(title = "P-value distribution: case alpha = 2", x = "p-value", y = "Frequency") +
-    scale_fill_manual(values = c("X -> Y" = "green", "Y -> X" = "purple")) +
-    scale_color_manual(values = c("X -> Y" = "green", "Y -> X" = "purple")) +
-    theme_minimal() +
-    theme(legend.position = "top")
-  
-  # Arrange the plots vertically
-  grid.arrange(plot1, plot2, ncol = 1)
-  
-  
-  
-  
-
-  
-  ######Graph number three
-  sample_sizes = c(50, 100,200,  300, 400, 500, 600, 800, 1000)
-  number_of_repetitions = 200
-  
-  stupid_transmission <- function(x){ #return 1 if 1-->2, return 0 if 2-->1
-    if(x=="Empty graph")return(0)else{return(2-as.numeric(substr(x[1],1,1)))}
+    result = c(result, graph[3,])
+    cat("Time remaining: n = ", n, '  and  number_of_repetitions = ', number_of_repetitions-i, "\n")
   }
   
-  alpha = 1
-  final_result = c()
-  for (n in sample_sizes) {
-    result = c()
-    for (i in 1:number_of_repetitions) {
-      X = generate_our_data(n=n, alpha)
-      graph = CPCM_graph_estimate(X, family_of_distributions = "Pareto")
-      result = c(result, graph[3,])
-      cat("Time remaining: n = ", n, '  and  number_of_repetitions = ', number_of_repetitions-i, "\n")
-    }
-    
-    final_result = cbind(final_result, result)
-    
-  }
+  final_result = cbind(final_result, result)
   
-  
-  
-  results_1 = rep(0, length(final_result[1,]))
-  for (j in 1:length(final_result[1,])) {
- for (i in 1:length(final_result[,1])) {
-   results_1[j] = results_1[j]+stupid_transmission(final_result[i,j])}
- results_1[j] = results_1[j]/length(final_result[,1])
-  }
-  
+}
 
-  
-  alpha = 2 
-  final_result = c()
-  for (n in sample_sizes) {
-    result = c()
-    for (i in 1:number_of_repetitions) {
-      X = generate_our_data(n=n, alpha)
-      graph = CPCM_graph_estimate(X, family_of_distributions = "Pareto")
-      result = c(result, graph[3,])
-      cat("Time remaining: n = ", n, '  and  number_of_repetitions = ', number_of_repetitions-i, "\n")
-    }
-    
-    final_result = cbind(final_result, result)
-    
-  }
-  
-  results_2 = rep(0, length(final_result[1,]))
-  for (j in 1:length(final_result[1,])) {
-    for (i in 1:length(final_result[,1])) {
-      results_2[j] = results_2[j]+stupid_transmission(final_result[i,j])}
-    results_2[j] = results_2[j]/length(final_result[,1])
-  }
-  
-  
-  
-  
-  
- 
-  # Combine into a data frame
-  data <- data.frame(
-    SampleSize = rep(sample_sizes, 2),
-    CorrectEstimationFraction = c(results_1, results_2),
-    Line = factor(rep(c("alpha = 1", "alpha = 2"), each = length(sample_sizes)))
-  )
-  
-  # Plot the data
-  ggplot(data, aes(x = SampleSize, y = CorrectEstimationFraction, color = Line)) +
-    geom_line(size = 1) +
-    labs(
-      title = "Score based algorithm estimate",
-      x = "Size of a Sample n",
-      y = "Correct Estimation Fraction"
-    ) +
-    theme_minimal() +
-    ylim(0.3, 1)
-  
-  
+results_2 = rep(0, length(final_result[1,]))
+for (j in 1:length(final_result[1,])) {
+  for (i in 1:length(final_result[,1])) {
+    results_2[j] = results_2[j]+stupid_transmission(final_result[i,j])}
+  results_2[j] = results_2[j]/length(final_result[,1])
+}
+
+
+
+
+
+
+# Combine into a data frame
+data <- data.frame(
+  SampleSize = rep(sample_sizes, 2),
+  CorrectEstimationFraction = c(results_1, results_2),
+  Line = factor(rep(c("alpha = 1", "alpha = 2"), each = length(sample_sizes)))
+)
+
+# Plot the data
+ggplot(data, aes(x = SampleSize, y = CorrectEstimationFraction, color = Line)) +
+  geom_line(size = 1) +
+  labs(
+    title = "Score based algorithm estimate",
+    x = "Size of a Sample n",
+    y = "Correct Estimation Fraction"
+  ) +
+  theme_minimal() +
+  ylim(0.3, 1)
+
