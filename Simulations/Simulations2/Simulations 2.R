@@ -21,9 +21,9 @@ library(stringr)
 
 set.seed(0)
 
-CPCM = function(X, family_of_distributions){
-result = CPCM_graph_estimate(X, family_of_distributions = family_of_distributions, force_estimate = TRUE)[3,]
-return(2-as.numeric(substr(result,1,1)))  #return 1 if 1-->2, return 0 if 2-->1
+CPCM = function(X, family_of_distributions='Sequential choice'){
+  result = CPCM_graph_estimate(X, family_of_distributions = family_of_distributions)[[1]][6]
+  return(2-as.numeric(substr(result,1,1)))  #return 1 if 1-->2, return 0 if 2-->1
 }
 
 transmission_for_loci <- function(x){ #return 1 if x>0, return 0 otherwise
@@ -52,7 +52,7 @@ X = sample_AN(n)      #First column
 #X = sample_pareto(n)  #Seventh column
 x = X[,1]; y=X[,2]
 
-r1=r1+ CPCM(X, 2) #Possibly CPCM(X, 1) in constant variance models
+r1=r1+ CPCM(X, family_of_distributions='Sequential choice') #Possibly CPCM(X, 1) or CPCM(X, 2) if we want better performance
 #r2=r2+ ResitWrap(X)$cd  #It seems that package CAM was erased or some other issue between the review rounds
 r3=r3+  QCCD(X, m=3)$cd  
 r4=r4+  SlopeWrap(X)$cd
