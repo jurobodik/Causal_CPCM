@@ -5,8 +5,8 @@ library(dplyr)
 library(ggplot2)
 library(readr)
 
-set.seed(42)
 ########################################### Data upload
+set.seed(42)
 df <-  read_csv("French_motor_data.csv")
 X <- df %>%
   mutate(
@@ -23,7 +23,7 @@ X <- df %>%
   as.data.frame()
 
 
-###############################################################
+############################################## Result #################
 result = CPCM_graph_estimate(X, family_of_distributions = 'Sequential choice')
 graphviz.plot(result, layout = "dot", main = "Causal Discovery Graph")
 
