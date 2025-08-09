@@ -1,5 +1,5 @@
-#####################     Simulations 6.1    ################################
-#Running the code below, you can recreate the results and graphs from Section 6.1.
+#####################     Simulations about Pareto case and Consequence 1    ################################
+#Running the code below, you can recreate the results and graphs from Section 6.2.
 #You need to first upload the function 'CPCM_graph_estimate', that is located in the main file
 #Lines 1-200 contain the simulations for the first plot
 #Lines 200-300 contain the simulations for the second plot
@@ -377,4 +377,5 @@ ggplot(data, aes(x = SampleSize, y = CorrectEstimationFraction, color = Line)) +
   ) +
   theme_minimal() +
   ylim(0.3, 1)
+
 
