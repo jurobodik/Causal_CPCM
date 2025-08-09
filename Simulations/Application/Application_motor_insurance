@@ -1,0 +1,33 @@
+#https://www.kaggle.com/datasets/karansarpal/fremtpl2-french-motor-tpl-insurance-claims?resource=download&select=freMTPL2freq.csv
+# Install needed packages
+library(readxl)
+library(dplyr)
+library(ggplot2)
+library(readr)
+
+set.seed(42)
+########################################### Data upload
+df <-  read_csv("French_motor_data.csv")
+X <- df %>%
+  mutate(
+    ClaimNb    = as.numeric(ClaimNb),
+    Exposure   = as.numeric(Exposure),
+    VehPower   = as.integer(VehPower),
+    VehAge     = as.integer(VehAge)
+  ) %>%
+  filter(!is.na(ClaimNb), !is.na(Exposure)) %>%
+  { print(summary(.)); . } %>%                 # show summary mid-pipe
+  select(ClaimNb, VehPower, VehAge, Exposure) %>%
+  filter(ClaimNb > 0) %>%
+  slice(1:1000) %>%
+  as.data.frame()
+
+
+###############################################################
+result = CPCM_graph_estimate(X, family_of_distributions = 'Sequential choice')
+graphviz.plot(result, layout = "dot", main = "Causal Discovery Graph")
+
+
+
+
+
