@@ -206,7 +206,7 @@ sid_distance <- function(true, estimate){
 n <- 1000
 ds <- c(3, 4, 6, 8, 10)
 n_reps <- 50
-methods <- c("RESIT", "greedy_slow", "greedy_fast", "exact")
+methods <- c("RESIT", "edge_greedy", "RESIT_greedy", "exact")
 scenario = "CPCM_exponential_linear"
 results <- list()
 
