@@ -16,7 +16,7 @@ CPCM models extend the identifiability of causal direction by allowing the effec
 
 ```r
 install.packages(c("mgcv", "dHSIC", "bnlearn", "MASS", "gamlss", "stringr", "dplyr"))
-git clone [https://github.com/yourusername/CPCM.git](https://github.com/jurobodik/Causal_CPCM.git)
+git clone https://github.com/jurobodik/Causal_CPCM.git
 ```
 
 ---
