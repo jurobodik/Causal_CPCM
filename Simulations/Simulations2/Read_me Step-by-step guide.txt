@@ -1,15 +1,51 @@
-#If you want to replicate results from Section 6.2 in the manuscript, follow these steps:
+# Replicating Bivariate Benchmark Comparison Results
 
-#First, open CPCM.txt file and run the file (it contains the CPCM function)
-#Second, download bQCD-master.zip (https://github.com/tagas/bQCD) and loci-master.zip (from https://github.com/AlexImmer/loci) 
-#Third, in order to run the codes coded in python, open a python modul, set directory to the extracted loci-master.zip and run the following chuck of code:
+This guide explains how to reproduce the results from the **Bivariate Benchmark Comparison** section of the manuscript.
 
-from causa.datasets import AN, LS, MNU, SIMG, ANs, CausalDataset, Tuebingen, SIM, LSs
-from causa.heci import HECI
-from causa.loci import loci
+> ⚠️ Python–R fusion here is more “duct tape” than “art”; but it runs on my machine. Email me if yours doesnt work: juraj.bodik@unil.ch
+---
 
-#Fourth, set directory to the extracted bQCD-master.zip file and run Data_generators.R and Baseline_methods_in_R.R 
-#finally, open Simulations 2.txt and run it
+## Steps
 
+1. **Upload the CPCM function**
 
-#Note: this is not the most elegant code. The code in python for the methods is coded more elegantly in https://github.com/AlexImmer/loci and in R in https://github.com/tagas/bQCD
+   * Open `CPCM_function.R` and run the file (this loads the main CPCM function).
+
+2. **Download required repositories**
+
+   * [bQCD-master.zip](https://github.com/tagas/bQCD)
+   * [loci-master.zip](https://github.com/AlexImmer/loci)
+
+3. **Run Python code for the methods**
+
+   * Extract `loci-master.zip`.
+   * Open a Python session/module.
+   * Set the working directory to the extracted `loci-master` folder.
+   * Run the following code:
+
+     ```python
+     from causa.datasets import AN, LS, MNU, SIMG, ANs, CausalDataset, Tuebingen, SIM, LSs
+     from causa.heci import HECI
+     from causa.loci import loci
+     ```
+
+4. **Run R code for the methods**
+
+   * Extract `bQCD-master.zip`.
+   * Set your R working directory to the extracted `bQCD-master` folder.
+   * Run `Data_generators.R` and `Baseline_methods_in_R.R`.
+
+5. **Run the simulation**
+
+   * Open `Simulations 2.txt` and run it.
+
+---
+
+## Notes
+
+* This code is **functional**, but not the most elegant.
+* For cleaner implementations:
+
+  * Python methods: [loci GitHub repo](https://github.com/AlexImmer/loci)
+  * R methods: [bQCD GitHub repo](https://github.com/tagas/bQCD)
+
