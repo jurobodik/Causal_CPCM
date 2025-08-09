@@ -63,31 +63,29 @@ result <- CPCM_graph_estimate(
 
 ##  Extending the Method
 
-To add new families or estimation logic:
+It is easy to addd new families! Just extend the estimate_epsilon function in a way that you want to obtain epsilons:
 
 ```r
 estimate_epsilon(Y, X, family = "YOUR_DISTRIBUTION")
 ```
 
-The implementation leverages `gam()` from **mgcv** for smooth fitting.
+The current implementation leverages `gam()` from **mgcv** for smooth fitting.
 
 ---
 
 ##  Example
 
 ```r
-library(mgcv)
+#n=1000
+#X1 = rnorm(n)
+#X2 = rnorm(n,X1^2,1)
+#X  = data.frame(X1, X2)
+#CPCM_graph_estimate(X, family_of_distributions = 'Sequential choice') 
 
-n <- 1000
-X1 <- rnorm(n)
-X2 <- sapply(X1, function(x) rnorm(1, x^2, 1))
-X <- data.frame(X1, X2)
-
-# Automatic family selection
-CPCM_graph_estimate(X, family_of_distributions = "Sequential choice")
-
-# Force Gaussian
-CPCM_graph_estimate(X, family_of_distributions = "Gaussian")
+#theta = 1/X2^2
+#X3 = rexp(n, rate = theta)
+#X  = data.frame(X1, X2, X3)
+#CPCM_graph_estimate(X, family_of_distributions = 1) 
 ```
 
 ---
