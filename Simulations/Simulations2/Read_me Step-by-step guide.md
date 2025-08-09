@@ -43,10 +43,10 @@ This guide explains how to reproduce the results from the **Bivariate Benchmark 
 
 ## Notes
 
-* This code is **functional**, but not the most elegant.
-* For cleaner implementations:
+* For cleaner implementations of all methods (except CPCM), use:
 
   * Python methods: [loci GitHub repo](https://github.com/AlexImmer/loci)
   * R methods: [bQCD GitHub repo](https://github.com/tagas/bQCD)
+
 
 
