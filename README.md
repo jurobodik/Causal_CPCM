@@ -6,13 +6,6 @@ CPCM models extend the identifiability of causal direction by allowing the effec
 
 ---
 
-##  Overview
-
-CPCM models extend the identifiability of causal direction by allowing the effect’s conditional distribution to vary in mean, variance, tail behavior, etc., according to the parent variables. This removes restrictive assumptions typical in additive-noise models. For the theoretical foundations and empirical evaluation of CPCM, see:
-
-- *Identifiability of causal graphs under nonadditive conditionally parametric causal models*, by Juraj Bodik & Valérie Chavez‑Demoulin (2023, arXiv) (https://arxiv.org/abs/2303.15376)
-
----
 
 ##  Installation
 
