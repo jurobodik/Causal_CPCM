@@ -1,85 +1,113 @@
 # CPCM
 
-This repository contains the code for estimating the causal graph using the CPCM (Conditionally parametric causal models) method. The main function `CPCM_graph_estimate()` implements this method and allows for flexible specification of the family of distributions.
-The `CPCM_graph_estimate` function is designed to estimate causal relationships among variables using the CPCM method, providing insights into the underlying causal structure based on the specified family of distributions.
+**Conditionally Parametric Causal Models (CPCM)** is a flexible framework for discovering causal structures when conditional distributions belong to known parametric families. This repository implements the `CPCM_graph_estimate()` function in R for inferring causal graphs under such assumptions.
 
-## Function Overview
+---
 
-The function `CPCM_graph_estimate(X, family_of_distributions, force_estimate)` estimates the causal graph based on the provided data `X` and the specified family of distributions.
+##  Overview
 
-### Parameters
+CPCM models extend the identifiability of causal direction by allowing the effect’s conditional distribution to vary in mean, variance, tail behavior, etc., according to the parent variables. This removes restrictive assumptions typical in additive-noise models. For the theoretical foundations and empirical evaluation of CPCM, see:
 
-- **X**: The input data matrix or data frame where each column represents a variable.
-- **family_of_distributions**: Specifies the family of distributions to use:
-  - `1`: Uses a joint model CPCM(F1...Fk) with 1-parameter distributions.
-  - `2`: Uses a joint model CPCM(F1...Fk) with 2-parameter distributions.
-  - `DistributionName`: Uses a model CPCM(F) where F=DistributionName. Choices are written below.
-- **force_estimate**: Optional parameter (default `FALSE`). If set to `TRUE`, an empty graph is not allowed.
+- *Identifiability of causal graphs under nonadditive conditionally parametric causal models*, by Juraj Bodik & Valérie Chavez‑Demoulin (2023, arXiv) (https://arxiv.org/abs/2303.15376)
 
-### Available Distributions
+---
 
-For `family_of_distributions = 1`:
-- `Gaussian with fixed sigma`
-- `Pareto`
-- `Poisson`
-
-For `family_of_distributions = 2`:
-- `Gaussian`
-- `Gamma`
-- `Negative_binomial`
-
-
-If you want to use CPCM(F) model with given $F$, the choices for 'family_of_distributions' are the following: `Gaussian`, `Gaussian with fixed sigma`, `Pareto`, `Gamma`, `Gamma with fixed scale`, `Gumbel`, `Gumbel with fixed scale`, `Negative_binomial`, `Poisson`
-
-### Rule of Thumb
-Good approach is to first try family1 and if all graphs are not plausible, use family2. However, if we do not want to compute everything twice, a good rule of thumb that works on the considered data is the following: 
-
-- Use `family_of_distributions = 1` if `n <= 1000`.
-- Use `family_of_distributions = 2` if `n > 1000`,
-  but again, this choice should depend on the dataset complexity.
-
-### Output 
-Output format depends on the dimension of X. 
-
-In the bivariate case, the output is in the following format:
-                                     
-- p-value 1-->2                       0.909445     (represents the p-value of the independence test between X1 and hat{epsilon_2})
-- p-value 2-->1                       0.000015     (represents the p-value of the independence test between X2 and hat{epsilon_1})
-- Score-based graph estimate           1 --> 2     (Score-based graph estimate represents the final estimate of the graph)
-- Testing estimate                     1 --> 2     (Testing estimate represents the final estimate of the graph using Algorithm 1. Note that five different outputs are possible) 
-- Families used              Gaussian;Gaussian     (first is the family used for X1 and the second is the family used for X2 (that is, family with the same support)
-
-In the case d=3, the output is in the following format:
-- $result                       Final score-based estimation of G; in particular, its adjacency matrix
-- $plausible                    List of all plausible graphs
-- $p_values                     p-values of the independence test between (hat{epsilon_1}, hat{epsilon_2}, hat{epsilon_3}) for all graphs
-- $p_values_adjusted            scores of all graphs using score=-log(p_values)+ lambda*(number of edges)
-
-In the case d>3, the output is the score-based estimation of G via greedy search: 
-- DAG in the format of bnlearn environment (see https://cran.r-project.org/web/packages/bnlearn/index.html)
-
-
-## Example
+##  Installation
 
 ```r
-# Generate example data
-n <- 500
-X1 <- rnorm(n)
-X2 <- numeric()
-for (i in 1:n) {
-  X2 <- c(X2, rnorm(1, X1[i], X1[i]^2 + 1))
-}
-X <- data.frame(X1, X2)
-plot(X)
-
-# Estimate causal graph using CPCM
-CPCM_graph_estimate(X, family_of_distributions = 2)
-CPCM_graph_estimate(X, family_of_distributions = 'Gaussian') #The same results, but forces the use of Gaussian F
-
-#>                                     Results
-#>p-value 1-->2                       0.909445
-#>p-value 2-->1                       0.000015
-#>Score-based graph estimate           1 --> 2
-#>Testing estimate                     1 --> 2
-#>Families used              Gaussian;Gaussian
+install.packages(c("mgcv", "dHSIC", "bnlearn", "MASS", "gamlss", "stringr", "dplyr"))
+git clone https://github.com/yourusername/CPCM.git
 ```
+
+---
+
+##  Usage
+
+```r
+source("CPCM_graph_estimate.R")
+
+result <- CPCM_graph_estimate(
+  X, 
+  family_of_distributions = 1,
+  greedy_method = "RESIT_greedy",
+  lambda = 1,
+  quiet = TRUE
+)
+```
+
+---
+
+##  Parameters
+
+| Parameter                | Description |
+|--------------------------|-------------|
+| **X**                    | Data frame or matrix; variables as columns. |
+| **family_of_distributions** | Model to use: <br>**Joint-family models**:<br>`1` → {Gaussian with fixed sigma, Poisson, Exponential, Pareto}<br>`2` → {Gaussian, Negative_binomial, Gamma, Pareto2}<br>`"Sequential choice"` → Automatically tries family 1, then 2 if needed.<br>**Single-family models**: `"Gaussian"`, `"Gaussian with fixed sigma"`, `"Pareto"`, `"Pareto2"`, `"Exponential"`, `"Gamma"`, `"Gamma with fixed scale"`, `"Gumbel"`, `"Gumbel with fixed scale"`, `"Poisson"`, `"Negative_binomial"` |
+| **greedy_method**         | Greedy search algorithm for `d > 3`: `"exact"`, `"RESIT_greedy"` (default), `"edge_greedy"`, `"RESIT"`. |
+| **lambda**                | Complexity penalty (per edge) in score-based search. |
+| **quiet**                 | Set `FALSE` to see progress updates. |
+
+---
+
+##  Output
+
+- **Bivariate (d = 2)**:
+  - `p-value 1→2`, `p-value 2→1`
+  - `Score-based graph estimate`
+  - `Testing estimate`
+  - `Families used`
+
+- **Trivariate (d = 3)**:
+  - `$result`: adjacency matrix
+  - `$plausible`: plausible graph list
+  - `$p_values`: p-values for all candidate graphs
+  - `$p_values_adjusted`: scores = –log(p) + λ × (#edges)
+
+- **Higher dimensions (d > 3)**:
+  - Returns estimated DAG compatible with the **bnlearn** format ([bnlearn on CRAN](https://cran.r-project.org/web/packages/bnlearn)).
+
+---
+
+##  Extending the Method
+
+To add new families or estimation logic:
+
+```r
+estimate_epsilon(Y, X, family = "YOUR_DISTRIBUTION")
+```
+
+The implementation leverages `gam()` from **mgcv** for smooth fitting, with distribution families from **gamlss**.
+
+---
+
+##  Rule of Thumb
+
+- Use `family_of_distributions = 1` when `n ≤ 1000`.
+- Use `family_of_distributions = 2` when `n > 1000`.
+- `"Sequential choice"` automatically switches if needed.
+
+---
+
+##  Example
+
+```r
+library(mgcv)
+
+n <- 1000
+X1 <- rnorm(n)
+X2 <- sapply(X1, function(x) rnorm(1, x^2, 1))
+X <- data.frame(X1, X2)
+
+# Automatic family selection
+CPCM_graph_estimate(X, family_of_distributions = "Sequential choice")
+
+# Force Gaussian
+CPCM_graph_estimate(X, family_of_distributions = "Gaussian")
+```
+
+---
+
+##  References
+
+- Bodik, J. & Chavez-Demoulin, V. (2023): *Identifiability of causal graphs under non-additive conditionally parametric causal models*, arXiv:2303.15376 (https://arxiv.org/abs/2303.15376)
+
