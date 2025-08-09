@@ -20,7 +20,7 @@ git clone https://github.com/jurobodik/Causal_CPCM.git
 ##  Usage
 
 ```r
-source("CPCM_graph_estimate.R")
+source("Main_function.R")
 
 result <- CPCM_graph_estimate(
   X, 
