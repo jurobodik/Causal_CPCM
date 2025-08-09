@@ -43,7 +43,7 @@ result <- CPCM_graph_estimate(
 |--------------------------|-------------|
 | **X**                    | Data frame or matrix; variables as columns. |
 | **family_of_distributions** | Model to use: <br>**Joint-family models**:<br>`1` → {Gaussian with fixed sigma, Poisson, Exponential, Pareto}<br>`2` → {Gaussian, Negative_binomial, Gamma, Pareto2}<br>`"Sequential choice"` → Automatically tries family 1, then 2 if 1 is unplausible.<br>**Single-family models**: `"Gaussian"`, `"Gaussian with fixed sigma"`, `"Pareto"`, `"Pareto2"`, `"Exponential"`, `"Gamma"`, `"Gamma with fixed scale"`, `"Gumbel"`, `"Gumbel with fixed scale"`, `"Poisson"`, `"Negative_binomial"` |
-| **greedy_method**         | Greedy search algorithm for `d > 3`: `"exact"`, `"RESIT_greedy"` (default), `"edge_greedy"`, `"RESIT"`. |
+| **greedy_method**         | Greedy search algorithm for `d > 2`: `"exact"`, `"RESIT_greedy"` (default), `"edge_greedy"`, `"RESIT"`. |
 | **lambda**                | Complexity penalty (per edge) in score-based search. |
 | **quiet**                 | Set `FALSE` to see progress updates. |
 
