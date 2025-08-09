@@ -60,7 +60,7 @@ for (j in 1:length(c(-2, 1, 0, 1, 2))) {
   for (i in 1:number_of_repetitions) {
     X <- generate_our_data(n = n, alpha)
     graph <- CPCM_graph_estimate(X, family_of_distributions = "Pareto")
-    result[i] <- graph[4,]
+    result[i] <- graph[5,]
     cat("Time remaining: alpha =", alpha, "and repetitions remaining =", number_of_repetitions - i, "\n")
   }
   
@@ -377,5 +377,6 @@ ggplot(data, aes(x = SampleSize, y = CorrectEstimationFraction, color = Line)) +
   ) +
   theme_minimal() +
   ylim(0.3, 1)
+
 
 
