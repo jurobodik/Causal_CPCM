@@ -52,19 +52,16 @@ result <- CPCM_graph_estimate(
 ##  Output
 
 - **Bivariate (d = 2)**:
-  - `p-value 1→2`, `p-value 2→1`
+  -  `p-value for empty graph`
+  - `p-value 1→2`,
+  - `p-value 2→1`
   - `Score-based graph estimate`
   - `Testing estimate`
+  - `Forced estimate`
   - `Families used`
 
-- **Trivariate (d = 3)**:
-  - `$result`: adjacency matrix
-  - `$plausible`: plausible graph list
-  - `$p_values`: p-values for all candidate graphs
-  - `$p_values_adjusted`: scores = –log(p) + λ × (#edges)
-
-- **Higher dimensions (d > 3)**:
-  - Returns estimated DAG compatible with the **bnlearn** format ([bnlearn on CRAN](https://cran.r-project.org/web/packages/bnlearn)).
+- **Multivariate (d > 2)**:
+  - Returns estimated DAG in the **bnlearn** format ([bnlearn on CRAN](https://cran.r-project.org/web/packages/bnlearn)).
 
 ---
 
@@ -76,15 +73,7 @@ To add new families or estimation logic:
 estimate_epsilon(Y, X, family = "YOUR_DISTRIBUTION")
 ```
 
-The implementation leverages `gam()` from **mgcv** for smooth fitting, with distribution families from **gamlss**.
-
----
-
-##  Rule of Thumb
-
-- Use `family_of_distributions = 1` when `n ≤ 1000`.
-- Use `family_of_distributions = 2` when `n > 1000`.
-- `"Sequential choice"` automatically switches if needed.
+The implementation leverages `gam()` from **mgcv** for smooth fitting.
 
 ---
 
