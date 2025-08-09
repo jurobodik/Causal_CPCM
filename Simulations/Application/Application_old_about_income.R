@@ -1,4 +1,4 @@
-# can also be downloaded from https://www.kaggle.com/datasets/grosvenpaul/family-income-and-expenditure
+# can be downloaded from https://www.kaggle.com/datasets/grosvenpaul/family-income-and-expenditure
 
 data <- read.csv("Family Income and Expenditure.csv")
 
@@ -31,6 +31,7 @@ CPCM_graph_estimate( X , family_of_distributions = 2)$result
 #>[1,]    0    1    0
 #>[2,]    0    0    0
 #>[3,]    0    1    0
+
 
 
 
