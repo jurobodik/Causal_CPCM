@@ -1,5 +1,5 @@
-#https://www.kaggle.com/datasets/karansarpal/fremtpl2-french-motor-tpl-insurance-claims?resource=download&select=freMTPL2freq.csv
-# Install needed packages
+# data are located in https://www.kaggle.com/datasets/karansarpal/fremtpl2-french-motor-tpl-insurance-claims?resource=download&select=freMTPL2freq.csv
+
 library(readxl)
 library(dplyr)
 library(ggplot2)
