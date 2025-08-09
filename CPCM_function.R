@@ -26,12 +26,13 @@ library(dplyr) #I dont think I used it, but its always useful for data manipulat
 ##################################   Example   ###########################################
 #n=1000
 #X1 = rnorm(n)
-#X2=c();
-#for (i in 1:n) {
-#  X2 = c(X2, rnorm(1,X1[i]^2,1))
-#}
-#X= data.frame(X1, X2)
+#X2 = rnorm(n,X1^2,1)
+#X  = data.frame(X1, X2)
 #CPCM_graph_estimate(X, family_of_distributions = 'Sequential choice') 
+
+#X3 = rexp(n, rate = 1/X2^2)
+#X  = data.frame(X1, X2, X3)
+#CPCM_graph_estimate(X, family_of_distributions = 1) 
 ############################ CPCM estimation of the causal graph ##########################
 
 CPCM_graph_estimate <- function(X, family_of_distributions = 1, greedy_method = 'RESIT_greedy', lambda = 1, 
@@ -814,6 +815,7 @@ CPCM_graph_estimate <- function(X, family_of_distributions = 1, greedy_method = 
     }
   }        
 }
+
 
 
 
