@@ -1,18 +1,14 @@
 #This is the code for the main function that estimates the causal graph via CPCM, called CPCM_graph_estimate(X, family_of_distributions). 
 
 #family_of_distributions correspond to the models we use. If you want to use CPCM(F) model, the choices for 'family_of_distributions' are
-#are the following: "Gaussian", "Gaussian with fixed sigma", "Pareto", "Gamma", "Gamma with fixed scale", "Gumbel", "Gumbel with fixed scale"
+#are the following: "Gaussian", "Gaussian with fixed sigma", "Pareto", "Pareto2", "Exponential", "Gamma", "Gamma with fixed scale", "Gumbel", "Gumbel with fixed scale", "Poisson", "Negative_binomial"
 
 
 #We implemented a joint CPCM(F1...Fk) model with the following:
-#family1 = c('Gaussian with fixed sigma', 'Pareto',  'Poisson')
-#family2 = c('Gaussian', 'Gamma', 'Negative_binomial')
-
-#family_of_distributions = 1 if we use family1
-#family_of_distributions = 2 if we use family2
-
+#family_of_distributions = 1 if we use family1 = c('Gaussian with fixed sigma', 'Poisson', 'Exponential', 'Pareto')
+#family_of_distributions = 2 if we use family2 = c('Gaussian', 'Negative_binomial','Gamma', 'Pareto2')
 #family_of_distributions = 'Sequential choice' if we first try family_of_distributions = 1, test plausibility and if unplausible then family_of_distributions = 2
-#however, it is more recommended to use family_of_distributions = 1 if n<=1000
+#however, it is more recommended to use family_of_distributions = 1 if n<=1000 as a rule of thumb
 
 
 #If you want different family than already coded or different method than implemented, it is easy! For that,
@@ -26,9 +22,6 @@ library(MASS) #Used indirectly via nb() in gam() for Negative Binomial family
 library("gamlss") #	Provides additional distribution families (gaulss, gammals, gumbls) used in gam()
 library(stringr) #Used for sub() string operations in the "Sequential choice" logic
 library(dplyr) #I dont think I used it, but its always useful for data manipulation
-#library(copula)
-#library(Hmisc)
-#library(rje)
 
 ##################################   Example   ###########################################
 #n=1000
@@ -39,31 +32,22 @@ library(dplyr) #I dont think I used it, but its always useful for data manipulat
 #}
 #X= data.frame(X1, X2)
 #CPCM_graph_estimate(X, family_of_distributions = 'Sequential choice') 
-
-#plot(X)
 ############################ CPCM estimation of the causal graph ##########################
 
-CPCM_graph_estimate <- function(X, family_of_distributions = 1, greedy_method = 'greedy_fast'){  #exact, greedy_fast, greedy_slow, RESIT
-  lambda = 1 #penalty for more edges
-  quiet = FALSE #if TRUE, it does not print the progress of the algorithm
+CPCM_graph_estimate <- function(X, family_of_distributions = 1, greedy_method = 'RESIT_greedy', lambda = 1, 
+                                quiet = TRUE){  #exact, RESIT_greedy, edge_greedy, RESIT
   
   n = length(X[,1])
   d = ncol(X)
   
-  if(family_of_distributions=='auto'){
-    if(n>1000){family_of_distributions = 'Sequential choice'
-    }else{family_of_distributions = 1}
-  }
-
-  
+  if(family_of_distributions=='S' || family_of_distributions=='s')family_of_distributions = 'Sequential choice'
   
   #Estimation \hat{S}
   estimate_support_of_Y_and_pair_with_family<-function(Y, family_of_distributions = 1){
     
     determine_support <- function(Y) {
-      
       # Check if the data is discrete (integer values only)
-      if (all(Y == floor(Y)) & length(unique(Y))< length(Y)/10) {
+      if (all(Y == floor(Y)) & length(unique(Y)) < length(Y) / 10) {
         return('discrete')  # Poisson distribution
       }
       
@@ -72,21 +56,44 @@ CPCM_graph_estimate <- function(X, family_of_distributions = 1, greedy_method = 
         return('interval')  # Beta distribution
       }
       
-      # Check for Gamma distribution characteristics
-      if (all(Y > 0)) {
-        # Check for skewness to differentiate from Gaussian
-        skewness <- mean((Y - mean(Y))^3) / (mean((Y - mean(Y))^2)^(3/2))
-        if (skewness > 0) {
-          return('half-line')  # Gamma distribution
+      # Check for support on [1, ∞) and estimate tail index
+      if (all(Y >= 1)) {
+        skewness= (quantile(Y, 0.90) + quantile(Y, 0.10) - 2 * quantile(Y, 0.50)) / (quantile(Y, 0.90) - quantile(Y, 0.10))
+        if(skewness > 0.2){  
+          # Is power-decay is better fit than exponential decay?
+          tail_frac = 0.1
+          threshold <- round((1 - tail_frac) * length(Y)):length(Y)
+          Y_tail <- sort(Y)[threshold]
+          S_tail <- 1 - (threshold / length(Y))
+          # Avoid log(0) issues
+          S_tail <- ifelse(S_tail <= 0, min(S_tail[S_tail > 0]), S_tail)
+          # Fit log-log (power law)
+          fit_pl <- lm(log(S_tail) ~ log(Y_tail))
+          R2_pl <- summary(fit_pl)$r.squared
+          # Fit log-linear (exponential)
+          fit_exp <- lm(log(S_tail) ~ Y_tail)
+          R2_exp <- summary(fit_exp)$r.squared
+          # Decision rule
+          if (R2_pl > R2_exp) {return("power tail")}
         }
       }
       
-      # If none of the above conditions are met, assume Gaussian
-      return('full support')  # Gaussian distribution
+      # Check for Gamma-type characteristics (positive skewed)
+      if (all(Y > 0)) {
+        skewness= (quantile(Y, 0.90) + quantile(Y, 0.10) - 2 * quantile(Y, 0.50)) / (quantile(Y, 0.90) - quantile(Y, 0.10))
+        if (skewness > 0.2) {
+          return('half-line')  # Gamma or Exponential
+        }
+      }
+      
+      # Default: assume Gaussian
+      return('full support')
     }
+    
     
     if(family_of_distributions == 1){
       if( determine_support(Y)=='full support') return('Gaussian with fixed sigma')
+      if( determine_support(Y)=='power tail') return('Pareto')
       if( determine_support(Y)=='discrete') return('Poisson')
       if( determine_support(Y)=='interval') return('Gaussian with fixed sigma') #Beta distribution is no longer supported :(
       if( determine_support(Y)=='half-line') return('Exponential')
@@ -94,6 +101,7 @@ CPCM_graph_estimate <- function(X, family_of_distributions = 1, greedy_method = 
     
     if(family_of_distributions == 2){
       if( determine_support(Y)=='full support') return('Gaussian')
+      if( determine_support(Y)=='power tail') return('Pareto2')
       if( determine_support(Y)=='discrete') return('Negative_binomial')
       if( determine_support(Y)=='interval') return('Gaussian') #Beta distribution is no longer supported  :(
       if( determine_support(Y)=='half-line') return('Gamma')
@@ -185,6 +193,49 @@ CPCM_graph_estimate <- function(X, family_of_distributions = 1, greedy_method = 
                           pexp(data$Y, rate = alpha_hat)
                         },
                         
+                        "Pareto2" = {
+                          data$Y <- log(Y$Y) #log(Pareto2) = Gamma distribution
+                          fit <- gam(list(formula_mu, formula_sigma), data = data, family = gammals())
+                          shape <- 1 / exp(fit$fitted.values[, 2])
+                          scale <- fit$fitted.values[, 1] * exp(fit$fitted.values[, 2])
+                          pgamma(Y$Y, shape = shape, scale = scale)
+                        },
+                        
+                         "Poisson" = {
+                          my_ppois <- function(Y, lambda) {
+                            ppois(Y - 1, lambda = lambda) + runif(length(Y)) * dpois(Y, lambda = lambda)
+                          }
+                          fit <- gam(formula_mu, data = data, family = poisson())
+                          my_ppois(Y$Y, lambda = fitted(fit))
+                        },
+                        
+                        "Negative_binomial" = { #A bit tricky, sometimes gives error and doesnt work very well :(
+                          to_mgcv <- function(f) as.formula(gsub("pb\\(([^)]+)\\)", "s(\\1, bs='ps')", deparse(f)), env = environment(f))
+                          
+                          fit <- gam(to_mgcv(construct_formula(X, TRUE,  method, pb = TRUE)), family = nb(), data = data, method = "REML")
+                          theta <- tryCatch({
+                            th <- fit$family$getTheta(TRUE); 
+                            if (length(th)!=1 || !is.finite(th)) stop("bad"); th
+                          }, error = function(e) {
+                            th <- try(fit$family$getTheta(TRUE), silent=TRUE)
+                            if (inherits(th,"try-error")) exp(get(".Theta", envir = environment(fit$family$variance))) else th
+                          })
+                          
+                          param <- list(mu = as.numeric(fitted(fit)),
+                                        size = rep(theta, NROW(data)))
+                          
+                          my_pnbinom <- function(Y, mu, size) {
+                            Y <- as.numeric(Y)
+                            pnbinom(Y - 1, mu = mu, size = size) +
+                              runif(length(Y)) * dnbinom(Y, mu = mu, size = size)
+                          }
+                          YY=Y$Y
+                          mu <- param$mu
+                          size <- param$size
+                          epsilon <- my_pnbinom(YY, mu = mu, size = size)
+                          return(epsilon)
+                        },
+                        
                         "Gumbel" = {
                           fit <- gam(list(formula_mu, formula_sigma), data = data, family = gumbls())
                           mu <- fit$fitted.values[, 1]
@@ -201,44 +252,12 @@ CPCM_graph_estimate <- function(X, family_of_distributions = 1, greedy_method = 
                           pgumbel(Y$Y, mu, scale)
                         },
                         
-                        "Pareto_old_version" = {
-                          data$Y <- -log(log(Y$Y))
-                          fit <- gam(list(formula_mu, ~1), data = data, family = gumbls())
-                          pgumbel <- function(x, location = 0, scale = 1) {exp(-exp(-(x - location) / scale))}
-                          pgumbel( data$Y , fit$fitted.values[, 1], 1)
-                        },
-                        
-                        "Poisson" = {
-                          my_ppois <- function(Y, lambda) {
-                            ppois(Y - 1, lambda = lambda) + runif(length(Y)) * dpois(Y, lambda = lambda)
-                          }
-                          fit <- gam(formula_mu, data = data, family = poisson())
-                          my_ppois(Y$Y, lambda = fitted(fit))
-                        },
-                        
-                        "Negative_binomial" = {
-                          my_pnbinom <- function(Y, mu, size) { 
-                            pnbinom(Y - 1, mu = mu, size = size) + runif(length(Y)) * dnbinom(Y, mu = mu, size = size)
-                          }
-                          formula_mu <- construct_formula(X, include_Y = TRUE, method = method, pb = TRUE)
-                          formula_sigma <- construct_formula(X, include_Y = FALSE, method = method, pb = TRUE)
-                          invisible(capture.output(suppressMessages(suppressWarnings({
-                            library(gamlss) #There is some issue now with MGCV package; so we need gamlss. But it creates some issues if both are loaded
-                            fit <- gamlss(formula_mu, sigma.formula = formula_sigma, family = NBI, data = data)
-                            detach("package:gamlss", unload = TRUE)
-                          }))))
-                          mu_hat <- fitted(fit, what = "mu")
-                          size_hat <- 1 / fitted(fit, what = "sigma")
-                          epsilon = my_pnbinom(Y$Y, mu = mu_hat, size = size_hat)
-                          return(epsilon)
-                        },
-                        
                         stop("Family not implemented.")
     )
     
     return(residuals)
   }
-
+  
   
   create_bivariate_output_from_p_values <- function(indep, z1, z2, family1, family2) {
     #Score-based graph estimate
@@ -304,13 +323,12 @@ CPCM_graph_estimate <- function(X, family_of_distributions = 1, greedy_method = 
     generate_all_dags <- function(nodes) {
       d <- length(nodes)
       all_dags <- list()
-      all_orders <- gtools::permutations(d, d)  # all topological orders
+      all_orders <- gtools::permutations(d, d)
+      seen <- new.env(hash = TRUE)
       
       for (order in 1:nrow(all_orders)) {
         perm <- all_orders[order, ]
-        perm_names <- nodes[perm]
         
-        # For each subset of possible parent sets under this order
         for (edge_bits in 0:(2^choose(d, 2) - 1)) {
           bits <- as.integer(intToBits(edge_bits))[1:choose(d, 2)]
           mat <- matrix(0, d, d)
@@ -321,14 +339,18 @@ CPCM_graph_estimate <- function(X, family_of_distributions = 1, greedy_method = 
               k <- k + 1
             }
           }
-          dag <- empty.graph(nodes)
-          amat(dag) <- mat
-          all_dags[[length(all_dags) + 1]] <- dag
+          
+          key <- paste(mat, collapse = "")
+          if (!exists(key, envir = seen)) {
+            dag <- bnlearn::empty.graph(nodes)
+            bnlearn::amat(dag) <- mat
+            all_dags[[length(all_dags) + 1]] <- dag
+            assign(key, TRUE, envir = seen)
+          }
         }
       }
       return(all_dags)
     }
-    
     
     dags <- generate_all_dags(nodes)
     p_values <- numeric(length(dags))
@@ -357,6 +379,9 @@ CPCM_graph_estimate <- function(X, family_of_distributions = 1, greedy_method = 
       res <- score_dag(dags[[i]])
       p_values[i] <- res$p_value
       p_values_adjusted[i] <- res$score
+      if(quiet ==FALSE) {
+        cat("DAG:", i, "| Score:", round(res$score, 4), "| p-value:", round(res$p_value, 4), "\n")
+      }
     }
     
     best_index <- which.min(p_values_adjusted)
@@ -379,14 +404,13 @@ CPCM_graph_estimate <- function(X, family_of_distributions = 1, greedy_method = 
   greedy_CPCM_graph_estimate <- function(X, family_of_distributions = 1, use_RESIT_ordering = TRUE) {
     nodes <- colnames(X)
     d <- ncol(X)
-    lambda <- 2
     best_plausibility = 0
     # === Score function ===
     score_function <- function(X, dag) {
       epsilon <- X
       for (i in seq_along(nodes)) {
         node <- nodes[i]
-        pa <- parents(dag, node)
+        pa <- bnlearn::parents(dag, node)
         if (length(pa) > 0) {
           fam <- if (family_of_distributions %in% c(1,2)) 
             estimate_support_of_Y_and_pair_with_family(X[, node], family_of_distributions)
@@ -395,7 +419,7 @@ CPCM_graph_estimate <- function(X, family_of_distributions = 1, greedy_method = 
         }
       }
       dhsic_test = dhsic.test(epsilon, method = "gamma")
-      return(data.frame(score =  dhsic_test$statistic + lambda * nrow(arcs(dag)),
+      return(data.frame(score =  -log(dhsic_test$p.value) + lambda * nrow(arcs(dag)),
                         p_value =  dhsic_test$p.value ))
     }
     
@@ -442,13 +466,13 @@ CPCM_graph_estimate <- function(X, family_of_distributions = 1, greedy_method = 
       
       # === Phase 2: Greedy backward pruning ===
       # Start from full DAG consistent with ordering
-      current_dag <- empty.graph(nodes)
+      current_dag <- bnlearn::empty.graph(nodes)
       for (i in seq_along(ordering)) {
         child <- ordering[i]
         if (i == 1) next
         parents <- ordering[1:(i - 1)]
         for (p in parents) {
-          if (p != child) current_dag <- set.arc(current_dag, from = p, to = child)
+          if (p != child) current_dag <- bnlearn::set.arc(current_dag, from = p, to = child)
         }
       }
       score = score_function(X, current_dag)
@@ -464,27 +488,39 @@ CPCM_graph_estimate <- function(X, family_of_distributions = 1, greedy_method = 
       while (improved) {
         improved <- FALSE
         arc_list <- arcs(current_dag)
+        best_temp_score <- best_score
+        best_temp_dag <- current_dag
+        best_arc_to_remove <- NULL
+        
         for (k in seq_len(nrow(arc_list))) {
           from <- arc_list[k, 1]
           to <- arc_list[k, 2]
           temp_dag <- drop.arc(current_dag, from, to)
-          score = score_function(X, temp_dag)
+          score <- score_function(X, temp_dag)
           temp_score <- score$score
-          best_plausibility = max(best_plausibility, score$p_value)
+          best_plausibility <- max(best_plausibility, score$p_value)
+          
           if (!quiet) {
             cat("Try removing", from, "->", to, "| score =", round(temp_score, 4), "\n")
           }
-          if (temp_score < best_score) {
-            current_dag <- temp_dag
-            best_score <- temp_score
-            improved <- TRUE
-            if (!quiet) {
-              cat("Removed", from, "->", to, "| new best score =", round(best_score, 4), "\n")
-            }
-            break  # restart after each successful removal
+          
+          if (temp_score < best_temp_score) {
+            best_temp_score <- temp_score
+            best_temp_dag <- temp_dag
+            best_arc_to_remove <- c(from, to)
+          }
+        }
+        
+        if (!is.null(best_arc_to_remove)) {
+          current_dag <- best_temp_dag
+          best_score <- best_temp_score
+          improved <- TRUE
+          if (!quiet) {
+            cat("Removed", best_arc_to_remove[1], "->", best_arc_to_remove[2], "| new best score =", round(best_score, 4), "\n")
           }
         }
       }
+      
       
     } else {
       # Greedy edge addition
@@ -687,18 +723,18 @@ CPCM_graph_estimate <- function(X, family_of_distributions = 1, greedy_method = 
       alpha_level = 0.01
       
       result1 = bivariate_CPCM_graph_estimate(X, family_of_distributions = 1)
-      if(max(result1[[1]][1:3])>alpha_level){return(result1)}else{
+      if(max(as.numeric(result1[[1]][1:3]))>alpha_level){return(result1)}else{
         result2 = bivariate_CPCM_graph_estimate(X, family_of_distributions = 2)
-        if(max(result2[[1]][1:3])>alpha_level){return(result2)}else{
+        if(max(as.numeric(result2[[1]][1:3]))>alpha_level){return(result2)}else{
           result3 = result2
-          result3[[1]][1] = max(result1[[1]][1], result2[[1]][1])
-          result3[[1]][2] = max(result1[[1]][2], result2[[1]][2])
-          result3[[1]][3] = max(result1[[1]][3], result2[[1]][3])
+          result3[[1]][1] = max(as.numeric(result1[[1]][1]), as.numeric(result2[[1]][1]))
+          result3[[1]][2] = max(as.numeric(result1[[1]][2]), as.numeric(result2[[1]][2]))
+          result3[[1]][3] = max(as.numeric(result1[[1]][3]), as.numeric(result2[[1]][3]))
           
           family1 = sub(";.*", "", result2[[1]][7])
           family2 = sub(".*?;", "", result2[[1]][7])
-          if(result1[[1]][2]>result2[[1]][2]){family1 = sub(";.*", "", result1[[1]][7])}
-          if(result1[[1]][3]>result2[[1]][3]){family2 = sub(".*?;", "", result1[[1]][7])}
+          if(as.numeric(result1[[1]][2])>as.numeric(result2[[1]][2])){family1 = sub(";.*", "", result1[[1]][7])}
+          if(as.numeric(result1[[1]][3])>as.numeric(result2[[1]][3])){family2 = sub(".*?;", "", result1[[1]][7])}
           
           result=create_bivariate_output_from_p_values(as.numeric(result3[[1]][1]), 
                                                        as.numeric(result3[[1]][2]), 
@@ -735,8 +771,8 @@ CPCM_graph_estimate <- function(X, family_of_distributions = 1, greedy_method = 
       }
       
     } else {
-      cat("Warning: Exact estimation is not implemented for d > 4. If d > 4, using greedy_slow estimation instead.\n")
-      greedy_method <- 'greedy_slow'
+      cat("Warning: Exact estimation is not implemented for d > 4. If d > 4, using edge_greedy estimation instead.\n")
+      greedy_method <- 'edge_greedy'
     }
   }
   
@@ -756,8 +792,8 @@ CPCM_graph_estimate <- function(X, family_of_distributions = 1, greedy_method = 
     }
   }
   
-  if ((greedy_method == 'greedy_fast' || greedy_method == 'greedy_slow') && ncol(X) > 2) {
-    if(greedy_method == 'greedy_fast'){use_RESIT_ordering=TRUE}else{use_RESIT_ordering=FALSE}
+  if ((greedy_method == 'RESIT_greedy' || greedy_method == 'edge_greedy') && ncol(X) > 2) {
+    if(greedy_method == 'RESIT_greedy'){use_RESIT_ordering=TRUE}else{use_RESIT_ordering=FALSE}
     
     if(family_of_distributions!='Sequential choice'){ 
       return(greedy_CPCM_graph_estimate(X, family_of_distributions=family_of_distributions, 
@@ -778,3 +814,8 @@ CPCM_graph_estimate <- function(X, family_of_distributions = 1, greedy_method = 
     }
   }        
 }
+
+
+
+
+
