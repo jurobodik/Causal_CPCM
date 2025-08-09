@@ -76,16 +76,16 @@ The current implementation leverages `gam()` from **mgcv** for smooth fitting.
 ##  Example
 
 ```r
-#n=1000
-#X1 = rnorm(n)
-#X2 = rnorm(n,X1^2,1)
-#X  = data.frame(X1, X2)
-#CPCM_graph_estimate(X, family_of_distributions = 'Sequential choice') 
+n=1000
+X1 = rnorm(n)
+X2 = rnorm(n,X1^2,1)
+X  = data.frame(X1, X2)
+CPCM_graph_estimate(X, family_of_distributions = 'Sequential choice') 
 
-#theta = 1/X2^2
-#X3 = rexp(n, rate = theta)
-#X  = data.frame(X1, X2, X3)
-#CPCM_graph_estimate(X, family_of_distributions = 1) 
+theta = 1/X2^2
+X3 = rexp(n, rate = theta)
+X  = data.frame(X1, X2, X3)
+CPCM_graph_estimate(X, family_of_distributions = 1) 
 ```
 
 ---
