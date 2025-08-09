@@ -8,7 +8,7 @@ CPCM models extend the identifiability of causal direction by allowing the effec
 
 ##  Installation
 
-The structure of this repository is very simple. The implementation is self-contained in a single R script **Main_function.R**, which defines the CPCM_graph_estimate() function. Packages needed:
+The structure of this repository is very simple. The implementation is self-contained in a single R script **CPCM_function.R**, which defines the CPCM_graph_estimate() function. Packages needed:
 
 ```r
 install.packages(c("mgcv", "dHSIC", "bnlearn", "MASS", "gamlss", "stringr", "dplyr"))
@@ -20,7 +20,7 @@ git clone https://github.com/jurobodik/Causal_CPCM.git
 ##  Usage
 
 ```r
-source("Main_function.R")
+source("CPCM_function.R")
 
 result <- CPCM_graph_estimate(
   X, 
