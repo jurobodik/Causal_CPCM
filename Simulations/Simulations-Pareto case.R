@@ -50,7 +50,8 @@ CPCM_graph_estimate(X, family_of_distributions = 'Pareto')
 
 # Repeat the process multiple times for different alphas
 number_of_repetitions <- 100
-n <- 500
+n <- 1000
+alphas = -2:2
 final_result <- matrix(NA, nrow = number_of_repetitions, ncol = length(c(-2, 1, 0, 1, 2)))
 
 for (j in 1:length(c(-2, 1, 0, 1, 2))) {
@@ -78,11 +79,11 @@ for (j in 1:5) {
   percentages[j, 5] <- sum(final_result[, j] == "Assumptions not fulfilled (both directions are not plausible)")
 }
 
-percentage1 <- percentages[, 1]
-percentage2 <- percentages[, 2]
-percentage3 <- percentages[, 3]
-percentage4 <- percentages[, 4]
-percentage5 <- percentages[, 5]
+percentage1 <- percentages[1,]
+percentage2 <- percentages[2,]
+percentage3 <- percentages[3,]
+percentage4 <- percentages[4,]
+percentage5 <- percentages[5,]
 
 
 # Create the data with five categories
@@ -377,6 +378,5 @@ ggplot(data, aes(x = SampleSize, y = CorrectEstimationFraction, color = Line)) +
   ) +
   theme_minimal() +
   ylim(0.3, 1)
-
 
 
