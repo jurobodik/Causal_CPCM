@@ -18,8 +18,10 @@ library(dplyr)  # for data manipulation
 library(purrr)  # for functional mapping
 library(tidyr)  # for reshaping results
 
-set.seed(42)  # for reproducibility
-n = 500
+source('Main_function.R')
+
+set.seed(42)
+n = 1000
 reps = 100
 #########################################################
 # Helper functions to generate random smooth θ(x)
@@ -93,10 +95,8 @@ families <- c(
 
 
 #########################################################
-# Safe per-cell runner: tolerates errors within reps
+# Safe per-cell runner
 #########################################################
-
-# NOTE: CPCM_graph_estimate() must be defined in your environment
 run_one_cell <- function(family, theta_label, n = 100, reps = 100) {
 
     successes <- 0L
@@ -147,6 +147,8 @@ run_one_cell <- function(family, theta_label, n = 100, reps = 100) {
 #########################################################
 # Full grid runner: survives bad cells + checkpoints
 #########################################################
+
+
 checkpoint_file = "sim3_checkpoint_long.csv"
 
   grid <- expand.grid(family = families, theta = names(theta_fns), stringsAsFactors = FALSE)
@@ -191,7 +193,9 @@ all_results = results_df %>%
       arrange(factor(family, levels = families))
   
 
+
+
 print(all_results)
 
-
-
+# write.csv(all_results$long, "sim_misspecF_long.csv", row.names = FALSE)
+# write.csv(all_results$wide, "sim_misspecF_table.csv", row.names = FALSE)
