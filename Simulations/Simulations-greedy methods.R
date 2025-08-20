@@ -9,7 +9,7 @@ library(ggplot2)
 library(gridExtra)
 library(patchwork)
 
-
+source('CPCM_function.R')
 ######################### Utils for Graph Operations #########################
 compare_dags <- function(learned_dag, true_dag) {
   
