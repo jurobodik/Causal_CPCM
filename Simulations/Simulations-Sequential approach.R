@@ -71,7 +71,7 @@ sub(".*;", "", estimate[[1]][6])=="1 --> 2" # Is the graph estimated correctly '
 sub(".*;", "", estimate[[1]][7])==example$distribution_used   #Is the chosen distribution correct?
 
 ####################### Repeat experiment and plot it ##########################
-set.seed()  # for reproducibility
+set.seed(1)  # for reproducibility
 ns <- c(100, 250, 500, 1000, 1500, 2000)
 families <- c(1, 2)
 reps <- 100
