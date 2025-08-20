@@ -10,14 +10,13 @@ library(ggpattern)
 library(gridExtra)
 library(EnvStats) #only for rpareto()
 
-source('CPCM_function.R')
+
+
 set.seed(1)
-
-
-#The following function generates the random sample following:
+#The following function generates the random sample following the distribution from CPCM(F) where 
 #p_{X_1}(x) \propto \frac{1}{ [\log(x)+1] x^{2} },    and     \theta(x) = x^\alpha\log(x)+1.
 #We use MCMC approach for generating random variable X given a density function f. See https://stats.stackexchange.com/questions/86909/how-to-generate-random-variables-from-a-defined-density-via-r
-
+# Function to generate data
 generate_our_data <- function(n = 1000, alpha) {
   m <- 1000 * n
   f <- function(x) 1.676875028178700 / (x^2 * (log(x) + 1)) #density of X1
@@ -211,8 +210,8 @@ result2 = c()
 for (i in 1:number_of_repetitions) {
   X = generate_our_data(n=500, alpha)
   graph = CPCM_graph_estimate(X, family_of_distributions = "Pareto")
-  result1 = c(result1, graph[1,])
-  result2 = c(result2, graph[2,])
+  result1 = c(result1, graph[2,])
+  result2 = c(result2, graph[3,])
   cat("Time remaining: ", number_of_repetitions-i, "\n")
 }
 
@@ -226,8 +225,8 @@ result4 = c()
 for (i in 1:number_of_repetitions) {
   X = generate_our_data(n=500, alpha)
   graph = CPCM_graph_estimate(X, family_of_distributions = "Pareto")
-  result3 = c(result3, graph[1,])
-  result4 = c(result4, graph[2,])
+  result3 = c(result3, graph[2,])
+  result4 = c(result4, graph[3,])
   cat("Time remaining: ", number_of_repetitions-i, "\n")
 }
 
@@ -316,7 +315,7 @@ for (n in sample_sizes) {
   for (i in 1:number_of_repetitions) {
     X = generate_our_data(n=n, alpha)
     graph = CPCM_graph_estimate(X, family_of_distributions = "Pareto")
-    result = c(result, graph[3,])
+    result = c(result, graph[4,])
     cat("Time remaining: n = ", n, '  and  number_of_repetitions = ', number_of_repetitions-i, "\n")
   }
   
@@ -342,7 +341,7 @@ for (n in sample_sizes) {
   for (i in 1:number_of_repetitions) {
     X = generate_our_data(n=n, alpha)
     graph = CPCM_graph_estimate(X, family_of_distributions = "Pareto")
-    result = c(result, graph[3,])
+    result = c(result, graph[4,])
     cat("Time remaining: n = ", n, '  and  number_of_repetitions = ', number_of_repetitions-i, "\n")
   }
   
@@ -379,6 +378,4 @@ ggplot(data, aes(x = SampleSize, y = CorrectEstimationFraction, color = Line)) +
   ) +
   theme_minimal() +
   ylim(0.3, 1)
-
-
 
