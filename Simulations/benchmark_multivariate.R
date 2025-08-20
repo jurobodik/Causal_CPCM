@@ -15,30 +15,30 @@ d=5;p=3
 true_dag <- generate_random_dag(d=d, p=p)
 X <- generate_random_scm(n = n, dag = true_dag, scenario = 'LINGAM_linear') #scenarios= c('Additive_Gaussian_sin', 'CPCM_exponential_linear', 'LINGAM_linear', 'CPCM_exp_gauss')
 # ----------- graph estimation -----------
+cpcm_estimate = CPCM_wrapper(X, 1)
 pc_estimate=PC_wrapper(X)
 ges_estimate=GES_wrapper(X)
 lingam_estimate = LINGAM_wrapper(X)
 anm_estimate = ANM_RESIT_wrapper(X)
-cpcm_estimate = CPCM_wrapper(X, 1)
 random_estimate <- generate_random_dag_matrix_with_equal_prob(d = d, edge_prob = 0.5)
 
 # -----------  SID  --------------------
 true_dag_adj =  amat(true_dag)
+sid_cpcm <- sid_distance(true_dag_adj, cpcm_estimate)
 sid_pc  <- sid_distance(true_dag_adj, pc_estimate)
 sid_ges <- sid_distance(true_dag_adj, ges_estimate)
 sid_lingam <- sid_distance(true_dag_adj, lingam_estimate)
 sid_anm <- sid_distance(true_dag_adj, anm_estimate)
-sid_cpcm <- sid_distance(true_dag_adj, cpcm_estimate)
 sid_random <- sid_distance(true_dag_adj, random_estimate)
 
 # ----------- Report results -----------
 cat(
   "\nSID Results:\n",
+  "CPCM     - SID:", sid_cpcm, "\n",
   "PC       - SID:", sid_pc, "\n",
   "GES      - SID:", sid_ges, "\n",
   "LINGAM   - SID:", sid_lingam, "\n",
   "ANM      - SID:", sid_anm, "\n",
-  "CPCM     - SID:", sid_cpcm, "\n",
   "Random   - SID:", sid_random, "\n"
 )
 
@@ -46,7 +46,6 @@ cat(
 
 
 ############################## Repeating the above for multiple scenarios and methods ##############################
-
 
 
 # Define scenarios and methods
@@ -78,7 +77,7 @@ for (sc in scenarios) {
       PC = PC_wrapper(X),
       GES = GES_wrapper(X),
       LINGAM = LINGAM_wrapper(X),
-    #  ANM = ANM_RESIT_wrapper(X),
+      #  ANM = ANM_RESIT_wrapper(X),
       CPCM = CPCM_wrapper(X, 1),
       Random = generate_random_dag_matrix_with_equal_prob(d = d, edge_prob = 0.5)
     )
