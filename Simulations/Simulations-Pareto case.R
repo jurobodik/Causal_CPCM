@@ -215,9 +215,6 @@ for (i in 1:number_of_repetitions) {
   cat("Time remaining: ", number_of_repetitions-i, "\n")
 }
 
-
-number_of_repetitions = 100
-
 alpha = 2
 result3 = c()
 result4 = c()
@@ -232,8 +229,10 @@ for (i in 1:number_of_repetitions) {
 
 
 
-result1 = result2[result1!='-']
+result1 = result1[result1!='-']
 result2 = result2[result2!='-']
+result3 = result3[result3!='-']
+result4 = result4[result4!='-']
 
 
 result1=as.numeric(result1)
