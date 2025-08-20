@@ -14,8 +14,11 @@ library(rje)
 library(stringr)
 
 #Function CPCM_graph_estimate can be found in file "CPCM_graph_estimate (main function)"
-#Implementations of other methods in file "baselines_from_Natasha"  
+source('CPCM_function.R')
+#Implementations of other methods in file "baselines_methods_in_R.R"  
+source('baselines_methods_in_R.R')
 #Data generations in file "data_generators"  
+source('Data generators.R')
 
 #The following code generates the first column in the table with X = sample_AN(n)
 
@@ -72,6 +75,7 @@ r5/i
 r6/i
 r7/i
 r8/i
+
 
 
 
