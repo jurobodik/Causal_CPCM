@@ -6,6 +6,7 @@ library(RBGL)       # needed by igraph.from.graphNEL()
 library(ggplot2)
 library(gridExtra)
 
+source('CPCM_function.R')
 source('utils_for_graphs.R')
 #############################  Example #################################
 # ----------- DAG + SCM generation -----------
