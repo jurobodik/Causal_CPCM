@@ -12,6 +12,7 @@ library(dplyr)    # for experiment loop
 library(ggplot2)
 library(tidyr)
 library(patchwork)  # for side-by-side plots
+source('CPCM_function.R')
 
 generate_data <- function(n, family_of_distributions = 1, dist_choice = NULL) {
   
