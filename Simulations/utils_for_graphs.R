@@ -10,7 +10,7 @@ library(ggplot2)
 library(gridExtra)
 
 compare_dags <- function(learned_dag, true_dag) {
-
+  
   old_names <- nodes(learned_dag)
   new_names <- paste0("X", seq_along(old_names))
   name_map <- setNames(new_names, old_names)
@@ -22,7 +22,7 @@ compare_dags <- function(learned_dag, true_dag) {
   name_map <- setNames(new_names, true_dag)
   true_dag <- rename.nodes(true_dag, name_map)
   
- 
+  
   learned_mat <- amat(learned_dag)
   true_mat <- amat(true_dag)
   
@@ -61,64 +61,60 @@ compare_dags <- function(learned_dag, true_dag) {
   invisible(list(correct = correct_edges, missing = missing_edges, extra = extra_edges))
 }
 
-generate_random_dag <- function(d, p) {
-  # Ensure p is within valid range
-  max_edges <- d * (d - 1) / 2  # Maximum edges for a DAG
-  if (p > max_edges) {
-    stop("Too many edges for a DAG with this number of nodes.")
+generate_random_dag <- function(d, number_of_edges = NULL, prob = NULL) # Use either `number_of_edges` (fixed number of edges) or `prob` (independent inclusion probability) to generate the DAG.
+{
+  # --- checks ---
+  if (!is.null(prob) && (!is.numeric(prob) || length(prob) != 1 || prob < 0 || prob > 1)) {
+    stop("`prob` must be a single number in [0, 1].")
+  }
+  if (!is.null(number_of_edges) && (!is.numeric(number_of_edges) || number_of_edges < 0 || floor(number_of_edges) != number_of_edges)) {
+    stop("`number_of_edges` must be a non-negative integer.")
+  }
+  if (is.null(number_of_edges) && is.null(prob)) {
+    stop("Provide either `number_of_edges` or `prob`.")
+  }
+  if (!is.null(number_of_edges) && !is.null(prob)) {
+    warning("Both `number_of_edges` and `prob` supplied; using `prob` and ignoring `number_of_edges`.")
   }
   
-  # Create node names as character strings
-  nodes <- as.character(seq_len(d))
+  # node names
+  nodes_chr <- as.character(seq_len(d))
   
-  # Generate a random topological ordering of nodes
-  node_order <- sample(nodes)  # Random order ensures no cycles
+  # random topological order (uniform over permutations)
+  order <- sample(nodes_chr)
   
-  # Generate all possible edges following this order
-  possible_edges <- expand.grid(from = node_order, to = node_order, stringsAsFactors = FALSE)
-  possible_edges <- possible_edges[possible_edges$from != possible_edges$to, ]
+  # all edges consistent with this order
+  possible_edges <- do.call(rbind, lapply(seq_len(d - 1), function(i) {
+    from <- order[i]
+    to   <- order[(i + 1):d]
+    data.frame(from = from, to = to, stringsAsFactors = FALSE)
+  }))
+  max_edges <- nrow(possible_edges) # equals d*(d-1)/2
   
-  # Keep only edges that respect the topological order
-  possible_edges <- possible_edges[match(possible_edges$from, node_order) < 
-                                     match(possible_edges$to, node_order), ]
-  
-  # Randomly select p edges
-  selected_edges <- possible_edges[sample(nrow(possible_edges), p), ]
-  
-  # Create an empty DAG
-  dag <- empty.graph(nodes)
-  
-  # Add edges to the DAG
-  for (i in 1:nrow(selected_edges)) {
-    dag <- set.arc(dag, from = as.character(selected_edges$from[i]), 
-                   to = as.character(selected_edges$to[i]))
+  # pick edges
+  if (!is.null(prob)) {
+    keep <- runif(max_edges) < prob
+    selected_edges <- possible_edges[keep, , drop = FALSE]
+  } else {
+    if (number_of_edges > max_edges) stop("Too many edges for a DAG with this number of nodes.")
+    pick <- sample.int(max_edges, number_of_edges)
+    selected_edges <- possible_edges[pick, , drop = FALSE]
   }
   
-  old_names <- nodes(dag)
-  new_names <- paste0("X", seq_along(old_names))
-  name_map <- setNames(new_names, old_names)
-  dag <- rename.nodes(dag, name_map)
-  
-  return(dag)
-}
-
-generate_random_dag_matrix_with_equal_prob <- function(d, edge_prob = 0.5) {
-  mat <- matrix(0, nrow = d, ncol = d)
-  for (i in 1:(d - 1)) {
-    for (j in (i + 1):d) {
-      mat[i, j] <- rbinom(1, 1, edge_prob)
+  # build DAG (bnlearn)
+  dag <- empty.graph(nodes_chr)
+  if (nrow(selected_edges) > 0) {
+    for (i in seq_len(nrow(selected_edges))) {
+      dag <- set.arc(dag, from = selected_edges$from[i], to = selected_edges$to[i])
     }
   }
   
-  # Shuffle the vertices (rows and columns)
-  perm <- sample(d)
-  mat <- mat[perm, perm]
+  # rename nodes to X1,...,Xd
+  old_names <- nodes(dag)
+  new_names <- paste0("X", seq_along(old_names))
+  dag <- rename.nodes(dag, setNames(new_names, old_names))
   
-  # Restore variable names to X1, ..., Xd (in order, not permuted)
-  var_names <- paste0("X", 1:d)
-  rownames(mat) <- colnames(mat) <- var_names
-  
-  return(mat)
+  return(dag)
 }
 
 generate_random_scm <- function(n = 500, dag,
