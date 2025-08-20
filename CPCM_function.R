@@ -32,8 +32,9 @@ library(dplyr) #I dont think I used it, but its always useful for data manipulat
 
 #X3 = rexp(n, rate = 1/X2^2)
 #X  = data.frame(X1, X2, X3)
-#CPCM_graph_estimate(X, family_of_distributions = 1) #Should return DAG (bn type) with edges [X1][X2|X1][X3|X2]
+#CPCM_graph_estimate(X, family_of_distributions = 1) #Should return DAG (bnlearn type) with edges [X1][X2|X1][X3|X2]
 ############################ CPCM estimation of the causal graph ##########################
+
 
 CPCM_graph_estimate <- function(X, family_of_distributions = 1, greedy_method = 'RESIT_greedy', lambda = 1, 
                                 quiet = TRUE){  #exact, RESIT_greedy, edge_greedy, RESIT
@@ -202,7 +203,7 @@ CPCM_graph_estimate <- function(X, family_of_distributions = 1, greedy_method = 
                           pgamma(Y$Y, shape = shape, scale = scale)
                         },
                         
-                         "Poisson" = {
+                        "Poisson" = {
                           my_ppois <- function(Y, lambda) {
                             ppois(Y - 1, lambda = lambda) + runif(length(Y)) * dpois(Y, lambda = lambda)
                           }
@@ -785,7 +786,7 @@ CPCM_graph_estimate <- function(X, family_of_distributions = 1, greedy_method = 
       alpha_level = 0.01
       result1 = RESIT_CPCM_graph_estimate(X, family_of_distributions = 1)
       plausibility1 = test_residual_independence(X, result1, family_of_distributions = 1)
-      cat('Plausibility for family1:', plausibility1, '\n')
+      if(quiet==FALSE){cat('Plausibility for family1:', plausibility1, '\n')}
       if(plausibility1>= alpha_level) {return(result1)}else{
         result2 = RESIT_CPCM_graph_estimate(X, family_of_distributions = 2)
         return(result2)
@@ -806,7 +807,7 @@ CPCM_graph_estimate <- function(X, family_of_distributions = 1, greedy_method = 
       result1 = greedy_CPCM_graph_estimate(X, family_of_distributions = 1, 
                                            use_RESIT_ordering = use_RESIT_ordering)
       plausibility1 = result1$best_plausibility
-      cat('Plausibility for family1:', plausibility1, '\n')
+      if(quiet==FALSE){cat('Plausibility for family1:', plausibility1, '\n')}
       if(plausibility1>= alpha_level) {return(result1$dag)}else{
         result2 = greedy_CPCM_graph_estimate(X, family_of_distributions = 2, 
                                              use_RESIT_ordering = use_RESIT_ordering)
@@ -815,10 +816,5 @@ CPCM_graph_estimate <- function(X, family_of_distributions = 1, greedy_method = 
     }
   }        
 }
-
-
-
-
-
 
 
