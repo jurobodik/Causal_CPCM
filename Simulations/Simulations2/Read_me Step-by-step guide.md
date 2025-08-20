@@ -2,7 +2,7 @@
 
 This guide explains how to reproduce the results from the **Bivariate Benchmark Comparison** section of the manuscript.
 
-> I’m more of a mathematician than a computer scientist, so Python–R fusion here is more “duct tape” than “art”; but it runs on my machine. Email me if yours doesnt work: juraj.bodik@unil.ch
+> I’m more of a mathematician than a computer scientist, so Python–R fusion here is more of a “duct tape” approach; but it runs on my machine. Email me if yours doesnt work: juraj.bodik@unil.ch
 ---
 
 ## Steps
@@ -47,6 +47,7 @@ This guide explains how to reproduce the results from the **Bivariate Benchmark 
 
   * Python methods: [loci GitHub repo](https://github.com/AlexImmer/loci)
   * R methods: [bQCD GitHub repo](https://github.com/tagas/bQCD)
+
 
 
 
