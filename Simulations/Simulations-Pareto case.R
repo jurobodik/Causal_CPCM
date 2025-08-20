@@ -10,13 +10,14 @@ library(ggpattern)
 library(gridExtra)
 library(EnvStats) #only for rpareto()
 
-
-
+source('CPCM_function.R')
 set.seed(1)
-#The following function generates the random sample following the distribution from CPCM(F) where 
+
+
+#The following function generates the random sample following:
 #p_{X_1}(x) \propto \frac{1}{ [\log(x)+1] x^{2} },    and     \theta(x) = x^\alpha\log(x)+1.
 #We use MCMC approach for generating random variable X given a density function f. See https://stats.stackexchange.com/questions/86909/how-to-generate-random-variables-from-a-defined-density-via-r
-# Function to generate data
+
 generate_our_data <- function(n = 1000, alpha) {
   m <- 1000 * n
   f <- function(x) 1.676875028178700 / (x^2 * (log(x) + 1)) #density of X1
@@ -378,5 +379,6 @@ ggplot(data, aes(x = SampleSize, y = CorrectEstimationFraction, color = Line)) +
   ) +
   theme_minimal() +
   ylim(0.3, 1)
+
 
 
