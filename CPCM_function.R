@@ -32,7 +32,7 @@ library(dplyr) #I dont think I used it, but its always useful for data manipulat
 
 #X3 = rexp(n, rate = 1/X2^2)
 #X  = data.frame(X1, X2, X3)
-#CPCM_graph_estimate(X, family_of_distributions = 1) 
+#CPCM_graph_estimate(X, family_of_distributions = 1) #Should return DAG (bn type) with edges [X1][X2|X1][X3|X2]
 ############################ CPCM estimation of the causal graph ##########################
 
 CPCM_graph_estimate <- function(X, family_of_distributions = 1, greedy_method = 'RESIT_greedy', lambda = 1, 
@@ -815,6 +815,7 @@ CPCM_graph_estimate <- function(X, family_of_distributions = 1, greedy_method = 
     }
   }        
 }
+
 
 
 
