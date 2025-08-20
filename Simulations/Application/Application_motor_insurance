@@ -1,12 +1,12 @@
-# data are located in https://www.kaggle.com/datasets/karansarpal/fremtpl2-french-motor-tpl-insurance-claims?resource=download&select=freMTPL2freq.csv
-
+# https://www.kaggle.com/datasets/karansarpal/fremtpl2-french-motor-tpl-insurance-claims?resource=download&select=freMTPL2freq.csv
+# Install needed packages
 library(readxl)
 library(dplyr)
 library(ggplot2)
 library(readr)
 
-########################################### Data upload
 set.seed(42)
+########################################### Data upload
 df <-  read_csv("French_motor_data.csv")
 X <- df %>%
   mutate(
@@ -16,16 +16,121 @@ X <- df %>%
     VehAge     = as.integer(VehAge)
   ) %>%
   filter(!is.na(ClaimNb), !is.na(Exposure)) %>%
-  { print(summary(.)); . } %>%                 # show summary mid-pipe
   select(ClaimNb, VehPower, VehAge, Exposure) %>%
   filter(ClaimNb > 0) %>%
   slice(1:1000) %>%
   as.data.frame()
-
-
-############################################## Result #################
+###############################################################
 result = CPCM_graph_estimate(X, family_of_distributions = 'Sequential choice')
+
 graphviz.plot(result, layout = "dot", main = "Causal Discovery Graph")
+
+
+
+
+
+
+
+# Run CPCM_graph_estimate 50 times on random subsamples of df.
+# Each run uses a different seed and up to 1000 rows.
+# If a run errors or exceeds `per_run_secs`, that run is retried with a fresh seed/sample.
+# (some random subsamples lead to errors)
+# Finally, we report how often each edge appears.
+
+library(dplyr)
+library(bnlearn)
+
+edge_vec_from_bn <- function(bn) {
+  A <- bnlearn::arcs(bn)
+  if (is.null(A) || nrow(A) == 0) return(character(0))
+  paste0(A[, "from"], " -> ", A[, "to"])
+}
+
+# ---- config ----
+n_reps               <- 50
+per_run_secs         <- 60 #error after this many seconds
+use_Rutils           <- requireNamespace("R.utils", quietly = TRUE)
+
+run_with_timeout <- function(expr, seconds) {
+  if (use_Rutils) {
+    R.utils::withTimeout(expr, timeout = seconds, elapsed = seconds, onTimeout = "error")
+  } else {
+    on.exit(setTimeLimit(cpu = Inf, elapsed = Inf, transient = TRUE), add = TRUE)
+    setTimeLimit(cpu = Inf, elapsed = seconds, transient = TRUE)
+    force(expr)
+  }
+}
+
+set.seed(42)
+all_edges <- character(0)
+
+for (i in seq_len(n_reps)) {
+  attempt <- 0
+  repeat {
+    attempt <- attempt + 1
+    # different deterministic seed per (i, attempt)
+    set.seed(i + 1000 * (attempt - 1))
+    
+    ok <- tryCatch({
+      run_with_timeout({
+        X <- df %>%
+          mutate(
+            ClaimNb  = as.numeric(ClaimNb),
+            Exposure = as.numeric(Exposure),
+            VehPower = as.integer(VehPower),
+            VehAge   = as.integer(VehAge)
+          ) %>%
+          filter(!is.na(ClaimNb), !is.na(Exposure)) %>%
+          select(ClaimNb, VehPower, VehAge, Exposure) %>%
+          filter(ClaimNb > 0) %>%
+          slice_sample(n = 1000, replace = FALSE) %>%
+          as.data.frame()
+        
+        result <- CPCM_graph_estimate(X, family_of_distributions = "Sequential choice")
+        edges  <- edge_vec_from_bn(result)
+        if (length(edges)) all_edges <- c(all_edges, edges)
+      }, seconds = per_run_secs)
+      TRUE
+    }, error = function(e) {
+      message(sprintf("Run %d", i, attempt, conditionMessage(e)))
+      FALSE
+    })
+    
+    if (ok) {
+      cat(sprintf("[run %d\n", i, attempt))
+      break
+    } else if (attempt >= 5) {
+      warning(sprintf("Run %d", i, 5))
+      break
+    } else {
+      # retry this i with a fresh seed/sample
+      next
+    }
+  }
+}
+
+edge_summary <- as.data.frame(sort(table(all_edges), decreasing = TRUE))
+names(edge_summary) <- c("Edge", "Count")
+edge_summary$Share <- edge_summary$Count / n_reps
+
+print(edge_summary)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
