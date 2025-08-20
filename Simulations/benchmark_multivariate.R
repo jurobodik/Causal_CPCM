@@ -11,16 +11,16 @@ source('utils_for_graphs.R')
 #############################  Example #################################
 # ----------- DAG + SCM generation -----------
 n <- 1000
-d=5;p=3
-true_dag <- generate_random_dag(d=d, p=p)
+d= 4; prob = 2/(d-1) # Probability of edge inclusion in the random DAG
+true_dag <- generate_random_dag(d=d, prob = prob)
 X <- generate_random_scm(n = n, dag = true_dag, scenario = 'LINGAM_linear') #scenarios= c('Additive_Gaussian_sin', 'CPCM_exponential_linear', 'LINGAM_linear', 'CPCM_exp_gauss')
 # ----------- graph estimation -----------
-cpcm_estimate = CPCM_wrapper(X, 1)
+cpcm_estimate = CPCM_wrapper(X, 's')
 pc_estimate=PC_wrapper(X)
 ges_estimate=GES_wrapper(X)
 lingam_estimate = LINGAM_wrapper(X)
 anm_estimate = ANM_RESIT_wrapper(X)
-random_estimate <- generate_random_dag_matrix_with_equal_prob(d = d, edge_prob = 0.5)
+random_estimate <- generate_random_dag(d = d, prob = 0.5)
 
 # -----------  SID  --------------------
 true_dag_adj =  amat(true_dag)
@@ -43,17 +43,15 @@ cat(
 )
 
 
-
-
 ############################## Repeating the above for multiple scenarios and methods ##############################
-
-
 # Define scenarios and methods
 scenarios <- c('Additive_Gaussian_sin', 'CPCM_exponential_linear', 'LINGAM_linear', 'CPCM_exp_gauss')
 methods <- c('PC', 'GES', 'LINGAM', 'ANM', 'CPCM', 'Random')
 n_iter <- 50
 n <- 1000
-d <- 8
+d <- 5
+prob = 2/(d-1)
+
 
 # Store all results
 all_results <- data.frame()
@@ -67,8 +65,7 @@ for (sc in scenarios) {
   
   for (i in 1:n_iter) {
     task_counter <- task_counter + 1
-    p <- sample(1:5, 1)
-    true_dag <- generate_random_dag(d = d, p = p)
+    true_dag <- generate_random_dag(d = d, prob = prob)
     X <- generate_random_scm(n = n, dag = true_dag, scenario = sc)
     true_dag_adj <- amat(true_dag)
     
@@ -77,9 +74,9 @@ for (sc in scenarios) {
       PC = PC_wrapper(X),
       GES = GES_wrapper(X),
       LINGAM = LINGAM_wrapper(X),
-      #  ANM = ANM_RESIT_wrapper(X),
-      CPCM = CPCM_wrapper(X, 1),
-      Random = generate_random_dag_matrix_with_equal_prob(d = d, edge_prob = 0.5)
+      ANM = ANM_RESIT_wrapper(X),
+      CPCM = CPCM_wrapper(X, 's'),
+      Random = generate_random_dag(d = d, prob = 0.5)
     )
     
     # Compute SIDs and store
