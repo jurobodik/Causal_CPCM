@@ -20,7 +20,7 @@ library(tidyr)  # for reshaping results
 
 source('Main_function.R')
 
-set.seed(42)
+set.seed(1)
 n = 1000
 reps = 100
 #########################################################
@@ -199,3 +199,4 @@ print(all_results)
 
 # write.csv(all_results$long, "sim_misspecF_long.csv", row.names = FALSE)
 # write.csv(all_results$wide, "sim_misspecF_table.csv", row.names = FALSE)
+
