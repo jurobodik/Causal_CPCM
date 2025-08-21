@@ -5,6 +5,9 @@ library(graph)      # for graphNEL
 library(RBGL)       # needed by igraph.from.graphNEL()
 library(ggplot2)
 library(gridExtra)
+library(dplyr)
+library(tidyr)
+
 
 source('CPCM_function.R')
 source('utils_for_graphs.R')
@@ -44,50 +47,67 @@ cat(
 
 
 ############################## Repeating the above for multiple scenarios and methods ##############################
-# Define scenarios and methods
-scenarios <- c('Additive_Gaussian_sin', 'CPCM_exponential_linear', 'LINGAM_linear', 'CPCM_exp_gauss')
-methods <- c('PC', 'GES', 'LINGAM', 'ANM', 'CPCM', 'Random')
+scenarios <- c('Additive_Gaussian_sin', 'CPCM_exponential_linear', 
+               'LINGAM_linear', 'CPCM_exp_gauss')
+methods <- c('PC', 'GES', 'LINGAM', 'ANM', 'ANM_greedy', 'CPCM', 'Random')
 n_iter <- 50
 n <- 1000
 d <- 5
-prob = 2/(d-1)
+prob <- 2/(d-1)
 
-
-# Store all results
+# Store results
 all_results <- data.frame()
 
 total_tasks <- length(scenarios) * n_iter
 task_counter <- 0
 start_time <- Sys.time()
 
+safe_run <- function(expr) {
+  result <- tryCatch(expr, error = function(e) NULL)
+  return(result)
+}
+
 for (sc in scenarios) {
   cat("Starting scenario:", sc, "\n")
   
   for (i in 1:n_iter) {
     task_counter <- task_counter + 1
-    true_dag <- generate_random_dag(d = d, prob = prob)
-    X <- generate_random_scm(n = n, dag = true_dag, scenario = sc)
-    true_dag_adj <- amat(true_dag)
     
-    # Run all methods
-    estimates <- list(
-      PC = PC_wrapper(X),
-      GES = GES_wrapper(X),
-      LINGAM = LINGAM_wrapper(X),
-      ANM = ANM_RESIT_wrapper(X),
-      CPCM = CPCM_wrapper(X, 's'),
-      Random = generate_random_dag(d = d, prob = 0.5)
-    )
-    
-    # Compute SIDs and store
-    for (m in names(estimates)) {
-      sid <- sid_distance(true_dag_adj, estimates[[m]])
-      all_results <- rbind(all_results, data.frame(
-        Scenario = sc,
-        Iteration = i,
-        Method = m,
-        SID = sid
-      ))
+    repeat {  # retry loop if any method fails
+      success <- TRUE
+      true_dag <- generate_random_dag(d = d, prob = prob)
+      X <- generate_random_scm(n = n, dag = true_dag, scenario = sc)
+      true_dag_adj <- amat(true_dag)
+      
+      # Run all methods safely
+      estimates <- list(
+        PC        = safe_run(PC_wrapper(X)),
+        GES       = safe_run(GES_wrapper(X)),
+        LINGAM    = safe_run(LINGAM_wrapper(X)),
+        ANM       = safe_run(ANM_RESIT_wrapper(X)),
+        ANM_greedy= safe_run(ANM_RESIT_greedy_wrapper(X)),
+        CPCM      = safe_run(CPCM_wrapper(X, 's')),
+        Random    = safe_run(generate_random_dag(d = d, prob = 0.5))
+      )
+      
+      # If any method failed, redo iteration
+      if (any(sapply(estimates, is.null))) {
+        success <- FALSE
+        next
+      }
+      
+      # Otherwise compute SIDs
+      for (m in names(estimates)) {
+        sid <- sid_distance(true_dag_adj, estimates[[m]])
+        all_results <- rbind(all_results, data.frame(
+          Scenario = sc,
+          Iteration = i,
+          Method = m,
+          SID = sid
+        ))
+      }
+      
+      break # leave repeat loop if success
     }
     
     # Progress report
@@ -100,15 +120,13 @@ for (sc in scenarios) {
   }
 }
 
-# Summary table
-sid_summary <- aggregate(SID ~ Scenario + Method, data = all_results, FUN = mean)
-print(sid_summary)
 
-# Plot boxplots (one per scenario)
-for (sc in scenarios) {
-  p <- ggplot(subset(all_results, Scenario == sc), aes(x = Method, y = SID)) +
-    geom_boxplot() +
-    ggtitle(paste("SID Boxplot - Scenario:", sc)) +
-    theme_minimal()
-  print(p)
-}
+avg_results <- all_results %>%
+  group_by(Scenario, Method) %>%
+  summarise(mean_SID = mean(SID), .groups = "drop") %>%
+  mutate(Method = factor(Method, levels = c("CPCM", "LINGAM", "ANM", "ANM_greedy", "PC", "GES", "Random"))) %>%
+  arrange(Method) %>%
+  pivot_wider(names_from = Scenario, values_from = mean_SID)
+
+print(avg_results)
+
