@@ -82,8 +82,7 @@ X2 = rnorm(n,X1^2,1)
 X  = data.frame(X1, X2)
 CPCM_graph_estimate(X, family_of_distributions = 'Sequential choice') 
 
-theta = 1/X2^2
-X3 = rexp(n, rate = theta)
+X3 = rexp(n, rate = 1/X2^2)
 X  = data.frame(X1, X2, X3)
 CPCM_graph_estimate(X, family_of_distributions = 1) 
 ```
