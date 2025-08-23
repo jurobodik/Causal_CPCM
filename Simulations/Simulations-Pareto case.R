@@ -208,7 +208,7 @@ result1 = c()
 result2 = c()
 
 for (i in 1:number_of_repetitions) {
-  X = generate_our_data(n=500, alpha)
+  X = generate_our_data(n=1000, alpha)
   graph = CPCM_graph_estimate(X, family_of_distributions = "Pareto")
   result1 = c(result1, graph[2,])
   result2 = c(result2, graph[3,])
@@ -220,7 +220,7 @@ result3 = c()
 result4 = c()
 
 for (i in 1:number_of_repetitions) {
-  X = generate_our_data(n=500, alpha)
+  X = generate_our_data(n=1000, alpha)
   graph = CPCM_graph_estimate(X, family_of_distributions = "Pareto")
   result3 = c(result3, graph[2,])
   result4 = c(result4, graph[3,])
@@ -300,7 +300,7 @@ grid.arrange(plot1, plot2, ncol = 1)
 
 
 ######Graph number three
-sample_sizes = c(50, 100,200,  300, 400, 500, 600, 800, 1000)
+sample_sizes = c(200, 400, 600, 800, 1000, 1250, 1500, 1750, 2000)
 number_of_repetitions = 200
 
 stupid_transmission <- function(x){ #return 1 if 1-->2, return 0 if 2-->1
@@ -314,7 +314,7 @@ for (n in sample_sizes) {
   for (i in 1:number_of_repetitions) {
     X = generate_our_data(n=n, alpha)
     graph = CPCM_graph_estimate(X, family_of_distributions = "Pareto")
-    result = c(result, graph[4,])
+    result = c(result, graph[6,])
     cat("Time remaining: n = ", n, '  and  number_of_repetitions = ', number_of_repetitions-i, "\n")
   }
   
@@ -340,7 +340,7 @@ for (n in sample_sizes) {
   for (i in 1:number_of_repetitions) {
     X = generate_our_data(n=n, alpha)
     graph = CPCM_graph_estimate(X, family_of_distributions = "Pareto")
-    result = c(result, graph[4,])
+    result = c(result, graph[6,])
     cat("Time remaining: n = ", n, '  and  number_of_repetitions = ', number_of_repetitions-i, "\n")
   }
   
@@ -364,17 +364,29 @@ for (j in 1:length(final_result[1,])) {
 data <- data.frame(
   SampleSize = rep(sample_sizes, 2),
   CorrectEstimationFraction = c(results_1, results_2),
-  Line = factor(rep(c("alpha = 1", "alpha = 2"), each = length(sample_sizes)))
+  Line = factor(rep(c("gamma = 1", "gamma = 2"), each = length(sample_sizes)))
 )
 
-# Plot the data
-ggplot(data, aes(x = SampleSize, y = CorrectEstimationFraction, color = Line)) +
-  geom_line(size = 1) +
+
+p1 <- ggplot(data, aes(x = SampleSize, y = CorrectEstimationFraction, color = Line)) +
+  geom_line() +
+  geom_point() +  # Add points like in p2
+  coord_cartesian(ylim = c(0.3, 1)) +  # Better than ylim()
   labs(
     title = "Score based algorithm estimate",
     x = "Size of a Sample n",
-    y = "Correct Estimation Fraction"
+    y = "Correct Estimation Fraction",
+    color = "DGP"  # Legend title (optional)
   ) +
-  theme_minimal() +
-  ylim(0.3, 1)
+  theme(
+    plot.title = element_text(size = 15),
+    axis.title = element_text(size = 14),
+    axis.text = element_text(size = 13),
+    legend.title = element_text(size = 13),
+    legend.text = element_text(size = 12),
+    legend.position = "right"  # Keep legend
+  )
 
+p1
+
+ggsave("score_based_estimate.pdf", p1, width = 8, height = 3, dpi = 500)
