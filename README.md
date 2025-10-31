@@ -63,7 +63,7 @@ result <- CPCM_graph_estimate(
 
 ##  Extending the Method
 
-It is easy to addd new families! Just extend the estimate_epsilon function in a way that you want to obtain epsilons:
+It is easy to add new families! Just extend the estimate_epsilon function in a way that you want to obtain epsilons:
 
 ```r
 estimate_epsilon(Y, X, family = "YOUR_DISTRIBUTION")
