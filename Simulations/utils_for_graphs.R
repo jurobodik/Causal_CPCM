@@ -8,6 +8,7 @@ library(graph)      # for graphNEL
 library(RBGL)       # needed by igraph.from.graphNEL()
 library(ggplot2)
 library(gridExtra)
+library(kpcalg) # For pcalg with hsic test. Erased from CRAN - not needed if using only gaussCItest
 
 compare_dags <- function(learned_dag, true_dag) {
   
