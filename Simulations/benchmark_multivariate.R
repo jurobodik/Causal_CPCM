@@ -19,7 +19,7 @@ true_dag <- generate_random_dag(d=d, prob = prob)
 X <- generate_random_scm(n = n, dag = true_dag, scenario = 'LINGAM_linear') #scenarios= c('Additive_Gaussian_sin', 'CPCM_exponential_linear', 'LINGAM_linear', 'CPCM_exp_gauss')
 # ----------- graph estimation -----------
 cpcm_estimate = CPCM_wrapper(X, 's')
-pc_estimate=PC_wrapper(X)
+pc_estimate=PC_wrapper(X, 'gauss')
 ges_estimate=GES_wrapper(X)
 lingam_estimate = LINGAM_wrapper(X)
 anm_estimate = ANM_RESIT_wrapper(X)
@@ -81,7 +81,7 @@ for (sc in scenarios) {
       
       # Run all methods safely
       estimates <- list(
-        PC        = safe_run(PC_wrapper(X)),
+        PC        = safe_run(PC_wrapper(X, 'gauss')), #Change to 'hsic' for a different independence test
         GES       = safe_run(GES_wrapper(X)),
         LINGAM    = safe_run(LINGAM_wrapper(X)),
         ANM       = safe_run(ANM_RESIT_wrapper(X)),
