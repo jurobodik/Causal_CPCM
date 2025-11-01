@@ -191,13 +191,26 @@ sid_distance <- function(true, estimate){
   return(sum(m) - bidirected_count_estimate -  bidirected_count_true)
 }
 
-PC_wrapper = function(X){
-  pc_fit <- pc(list(C = cor(X), n = nrow(X)), indepTest = gaussCItest,
-               alpha = 0.05, labels = colnames(X))
-  pc_bn <- as.bn(as(pc_fit@graph, "graphNEL"))
-  pc_mat   <- as(as.graphNEL(pc_bn), "matrix")
-  return(pc_mat)
+
+PC_wrapper <- function(X, test = c("gauss","hsic"), alpha = 0.05) {
+  test <- match.arg(test)
+  if (is.data.frame(X)) X <- as.matrix(X)
+  
+  if (test == "gauss") {
+    suffStat  <- list(C = stats::cor(X), n = nrow(X))
+    indepTest <- pcalg::gaussCItest
+  } else { # HSIC via kpcalg
+    suffStat  <- list(data = X, ic.method = "hsic.gamma")  # or "hsic.perm"
+    indepTest <- kpcalg::kernelCItest
+  }
+  
+  pc_fit <- pcalg::pc(suffStat, indepTest, alpha = alpha, labels = colnames(X))
+  pc_bn  <- bnlearn::as.bn(methods::as(pc_fit@graph, "graphNEL"))
+  pc_mat <- methods::as(bnlearn::as.graphNEL(pc_bn), "matrix")
+  storage.mode(pc_mat) <- "integer"
+  pc_mat
 }
+
 
 GES_wrapper=function(X){
   ges_fit <- ges(new("GaussL0penObsScore", data = X))
