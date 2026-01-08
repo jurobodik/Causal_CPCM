@@ -1,7 +1,7 @@
 # Conditionally Parametric Causal Models (CPCM)
 
-Conditionally Parametric Causal Models (CPCM) is a flexible framework for discovering causal structures when conditional distributions belong to known parametric families. This repository implements the `CPCM_graph_estimate()` function in R for inferring causal graphs under such assumptions.
-CPCM models extend the identifiability of causal direction by allowing the effect’s conditional distribution to vary in mean, variance, tail behavior, etc., according to the parent variables. This relax the restrictive assumptions typical in additive-noise models. See:
+Conditionally Parametric Causal Models (CPCM) is a flexible framework for discovering causal structures when the conditional distributions belong to a known family such as Gaussian, Gamma, etc. This repository implements the `CPCM_graph_estimate()` function in R for inferring causal graphs under such assumptions.
+CPCM models extend the identifiability of causal direction by allowing the effect’s conditional distribution to vary in mean, variance, tail behavior, etc., according to the parent variables. This relaxes the restrictive assumptions typical in additive-noise models. See:
 - *Identifiability of causal graphs under nonadditive conditionally parametric causal models*, by Juraj Bodik & Valérie Chavez‑Demoulin (JMLR, 2025) [LINK](https://www.jmlr.org/papers/v26/24-1662.html)
 ---
 
