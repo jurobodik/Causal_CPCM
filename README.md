@@ -91,5 +91,5 @@ CPCM_graph_estimate(X, family_of_distributions = 1)
 
 ##  References
 
-- Bodik, J. & Chavez-Demoulin, V. (2023): *Identifiability of causal graphs under non-additive conditionally parametric causal models*, arXiv:2303.15376 (https://arxiv.org/abs/2303.15376)
+- Bodik, J. & Chavez-Demoulin, V. (JMLR, 2025): *Identifiability of causal graphs under non-additive conditionally parametric causal models*, ([PDF](https://www.jmlr.org/papers/v26/24-1662.html))
 
